@@ -1,4 +1,4 @@
-name: CodeNexus CI/CD
+﻿name: EdSkill CI/CD
 
 on:
   push:
@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: codenexus-${{ github.workflow }}-${{ github.ref }}
+  group: edskill-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -31,14 +31,14 @@ jobs:
       run: dotnet restore
 
     - name: Build (includes test project)
-      run: dotnet build tests/CodeNexus.UnitTests/CodeNexus.UnitTests.csproj -c Release --no-restore
+      run: dotnet build tests/EdSkill.UnitTests/EdSkill.UnitTests.csproj -c Release --no-restore
 
     - name: Run Unit Tests
-      run: dotnet test tests/CodeNexus.UnitTests/CodeNexus.UnitTests.csproj -c Release --no-build --verbosity normal
+      run: dotnet test tests/EdSkill.UnitTests/EdSkill.UnitTests.csproj -c Release --no-build --verbosity normal
 
     - name: Publish API
       if: github.event_name == 'push' && (github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/heads/develop'))
-      run: dotnet publish src/CodeNexus.API/CodeNexus.API.csproj -c Release --no-restore -o ./publish
+      run: dotnet publish src/EdSkill.API/EdSkill.API.csproj -c Release --no-restore -o ./publish
 
     - name: Deploy to Azure
       if: github.event_name == 'push' && (github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/heads/develop'))
