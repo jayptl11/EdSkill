@@ -376,7 +376,9 @@ FodyWeavers.xsd
 *.sql
 
 # Markdown notes/docs are local only
+!AGENT.md
 *.md
+
 
 
 *.docx
