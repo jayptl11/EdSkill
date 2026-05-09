@@ -54,6 +54,7 @@ public class LoginWithGoogleCommandHandlerTests
             UserId = Guid.NewGuid(),
             Email = "user@gmail.com",
             Username = "user",
+            Roles = new List<string> { "learner" },
             LastLogin = DateTime.UtcNow.AddDays(-1),
             UserProfile = new UserProfile
             {
@@ -83,6 +84,7 @@ public class LoginWithGoogleCommandHandlerTests
         result.Value.RefreshToken.Should().Be("rt");
         result.Value.Email.Should().Be(user.Email);
         result.Value.Username.Should().Be(user.Username);
+        result.Value.Roles.Should().BeEquivalentTo("learner");
         result.Value.ShouldPromptDailyReminderTime.Should().BeFalse();
 
         refreshTokens.Should().HaveCount(1);
@@ -96,9 +98,6 @@ public class LoginWithGoogleCommandHandlerTests
         // Arrange
         var users = new List<User>();
         SetupUsersDbSet(users);
-
-        var studentRole = new Role { RoleId = Guid.NewGuid(), RoleName = "Student" };
-        SetupRolesDbSet(new List<Role> { studentRole });
 
         var userProfiles = new List<UserProfile>();
         SetupUserProfilesDbSet(userProfiles);
@@ -124,10 +123,11 @@ public class LoginWithGoogleCommandHandlerTests
         result.Value.Should().NotBeNull();
         users.Should().HaveCount(1);
         users[0].Email.Should().Be("new@gmail.com");
-        users[0].RoleId.Should().Be(studentRole.RoleId);
+        users[0].Roles.Should().BeEquivalentTo("learner");
+        users[0].Status.Should().Be("active");
         result.Value.AccessToken.Should().Be("jwt");
         result.Value.RefreshToken.Should().Be("rt");
-        result.Value.RoleName.Should().Be("Student");
+        result.Value.Roles.Should().BeEquivalentTo("learner");
         result.Value.ShouldPromptDailyReminderTime.Should().BeFalse();
 
         userProfiles.Should().HaveCount(1);
@@ -136,6 +136,32 @@ public class LoginWithGoogleCommandHandlerTests
         refreshTokens.Should().HaveCount(1);
         refreshTokens[0].UserId.Should().Be(users[0].UserId);
         refreshTokens[0].Token.Should().Be("rt");
+    }
+
+    [Fact]
+    public async Task Handle_WhenUserSuspended_ReturnsFailure()
+    {
+        // Arrange
+        var user = new User
+        {
+            UserId = Guid.NewGuid(),
+            Email = "user@gmail.com",
+            Username = "user",
+            Status = "suspended"
+        };
+
+        SetupUsersDbSet(new List<User> { user });
+
+        _googleAuthMock
+            .Setup(x => x.ValidateIdTokenAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new GoogleUserInfo(user.Email, "A", "LE", "A LE"));
+
+        // Act
+        var result = await _handler.Handle(new LoginWithGoogleCommand("ok"), CancellationToken.None);
+
+        // Assert
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be("ACCOUNT_SUSPENDED");
     }
 
     private void SetupUsersDbSet(List<User> users)
@@ -166,20 +192,6 @@ public class LoginWithGoogleCommandHandlerTests
 
         dbSetMock.Setup(x => x.Add(It.IsAny<RefreshToken>())).Callback<RefreshToken>(rt => refreshTokens.Add(rt));
         _contextMock.Setup(x => x.RefreshTokens).Returns(dbSetMock.Object);
-    }
-
-    private void SetupRolesDbSet(List<Role> roles)
-    {
-        var queryable = new TestAsyncEnumerable<Role>(roles);
-        var dbSetMock = new Mock<DbSet<Role>>();
-        dbSetMock.As<IQueryable<Role>>().Setup(m => m.Provider).Returns(queryable.AsQueryable().Provider);
-        dbSetMock.As<IQueryable<Role>>().Setup(m => m.Expression).Returns(queryable.AsQueryable().Expression);
-        dbSetMock.As<IQueryable<Role>>().Setup(m => m.ElementType).Returns(queryable.AsQueryable().ElementType);
-        dbSetMock.As<IQueryable<Role>>().Setup(m => m.GetEnumerator()).Returns(queryable.AsQueryable().GetEnumerator());
-        dbSetMock.As<IAsyncEnumerable<Role>>().Setup(m => m.GetAsyncEnumerator(It.IsAny<CancellationToken>()))
-            .Returns(queryable.GetAsyncEnumerator());
-
-        _contextMock.Setup(x => x.Roles).Returns(dbSetMock.Object);
     }
 
     private void SetupUserProfilesDbSet(List<UserProfile> userProfiles)

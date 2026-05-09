@@ -31,7 +31,7 @@ public class RegisterCommandHandlerTests
     public async Task Handle_WhenEmailAlreadyExists_ReturnsFailure()
     {
         // Arrange
-        var command = new RegisterCommand("existing@test.com", "newuser", "John", "Doe", "Password123");
+        var command = new RegisterCommand("existing@test.com", "newuser", "John", "Doe", "Password123", new[] { "learner" });
         var users = new List<User> { new() { Email = "existing@test.com", Username = "existinguser" } };
         SetupUsersDbSet(users);
 
@@ -47,7 +47,7 @@ public class RegisterCommandHandlerTests
     public async Task Handle_WhenUsernameAlreadyExists_ReturnsFailure()
     {
         // Arrange
-        var command = new RegisterCommand("new@test.com", "existinguser", "John", "Doe", "Password123");
+        var command = new RegisterCommand("new@test.com", "existinguser", "John", "Doe", "Password123", new[] { "learner" });
         var users = new List<User> { new() { Email = "other@test.com", Username = "existinguser" } };
         SetupUsersDbSet(users);
 
@@ -63,7 +63,7 @@ public class RegisterCommandHandlerTests
     public async Task Handle_WhenValidRequest_CreatesOtpAndSendsEmail()
     {
         // Arrange
-        var command = new RegisterCommand("new@test.com", "newuser", "John", "Doe", "Password123");
+        var command = new RegisterCommand("new@test.com", "newuser", "John", "Doe", "Password123", new[] { "learner", "companion" });
         var users = new List<User>();
         SetupUsersDbSet(users);
 
@@ -77,6 +77,11 @@ public class RegisterCommandHandlerTests
 
         // Assert
         result.IsSuccess.Should().BeTrue();
+        _otpCacheServiceMock.Verify(x => x.GenerateAndStoreOtpAsync(
+            "new@test.com",
+            OtpPurpose.Register,
+            It.Is<string>(payload => payload.Contains("\"Roles\":[\"learner\",\"companion\"]")),
+            It.IsAny<CancellationToken>()), Times.Once);
         _emailServiceMock.Verify(x => x.SendOtpEmailAsync("new@test.com", "123456", It.IsAny<CancellationToken>()), Times.Once);
     }
 

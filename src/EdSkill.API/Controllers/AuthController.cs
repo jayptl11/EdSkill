@@ -32,7 +32,7 @@ public class AuthController : ControllerBase
     [ProducesResponseType(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> Register([FromBody] RegisterRequest request)
     {
-        var command = new RegisterCommand(request.Email, request.Username, request.FirstName, request.LastName, request.Password);
+        var command = new RegisterCommand(request.Email, request.Username, request.FirstName, request.LastName, request.Password, request.Roles);
         var result = await _sender.Send(command);
         return ToActionResult(result);
     }
@@ -142,6 +142,7 @@ public class AuthController : ControllerBase
         {
             "EMAIL_EXISTS" or "USERNAME_EXISTS" => Conflict(new { result.ErrorCode, result.ErrorMessage }),
             "OTP_RATE_LIMITED" or "RESEND_RATE_LIMITED" => StatusCode(StatusCodes.Status429TooManyRequests, new { result.ErrorCode, result.ErrorMessage }),
+            "ACCOUNT_SUSPENDED" => StatusCode(StatusCodes.Status403Forbidden, new { result.ErrorCode, result.ErrorMessage }),
             _ => BadRequest(new { result.ErrorCode, result.ErrorMessage })
         };
     }
@@ -155,6 +156,7 @@ public class AuthController : ControllerBase
         {
             "EMAIL_EXISTS" or "USERNAME_EXISTS" => Conflict(new { result.ErrorCode, result.ErrorMessage }),
             "OTP_RATE_LIMITED" or "RESEND_RATE_LIMITED" => StatusCode(StatusCodes.Status429TooManyRequests, new { result.ErrorCode, result.ErrorMessage }),
+            "ACCOUNT_SUSPENDED" => StatusCode(StatusCodes.Status403Forbidden, new { result.ErrorCode, result.ErrorMessage }),
             _ => BadRequest(new { result.ErrorCode, result.ErrorMessage })
         };
     }

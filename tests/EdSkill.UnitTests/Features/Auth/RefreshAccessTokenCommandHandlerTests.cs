@@ -114,14 +114,12 @@ public class RefreshAccessTokenCommandHandlerTests
     public async Task Handle_WhenValidRefreshToken_RevokesOldAndReturnsNewTokens()
     {
         // Arrange
-        var role = new Role { RoleId = Guid.NewGuid(), RoleName = "Student" };
         var user = new User
         {
             UserId = Guid.NewGuid(),
             Email = "test@test.com",
             Username = "test",
-            RoleId = role.RoleId,
-            Role = role
+            Roles = new List<string> { "learner" }
         };
 
         var validToken = new RefreshToken
@@ -153,7 +151,7 @@ public class RefreshAccessTokenCommandHandlerTests
         result.Value.RefreshToken.Should().Be("new-refresh-token");
         result.Value.UserId.Should().Be(user.UserId);
         result.Value.Email.Should().Be(user.Email);
-        result.Value.RoleName.Should().Be("Student");
+        result.Value.Roles.Should().BeEquivalentTo("learner");
 
         // Old token should be revoked
         validToken.RevokedAt.Should().NotBeNull("old refresh token should be revoked");
@@ -162,6 +160,39 @@ public class RefreshAccessTokenCommandHandlerTests
         refreshTokens.Should().HaveCount(2);
         refreshTokens[1].Token.Should().Be("new-refresh-token");
         refreshTokens[1].UserId.Should().Be(user.UserId);
+    }
+
+    [Fact]
+    public async Task Handle_WhenUserSuspended_ReturnsFailure()
+    {
+        // Arrange
+        var user = new User
+        {
+            UserId = Guid.NewGuid(),
+            Email = "test@test.com",
+            Username = "test",
+            Status = "suspended"
+        };
+
+        var validToken = new RefreshToken
+        {
+            TokenId = Guid.NewGuid(),
+            UserId = user.UserId,
+            User = user,
+            Token = "valid-refresh-token",
+            ExpiresAt = DateTime.Now.AddDays(5),
+            RevokedAt = null
+        };
+
+        SetupRefreshTokensDbSet(new List<RefreshToken> { validToken });
+
+        // Act
+        var result = await _handler.Handle(new RefreshAccessTokenCommand("valid-refresh-token"), CancellationToken.None);
+
+        // Assert
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be("ACCOUNT_SUSPENDED");
+        validToken.RevokedAt.Should().BeNull();
     }
 
     [Fact]

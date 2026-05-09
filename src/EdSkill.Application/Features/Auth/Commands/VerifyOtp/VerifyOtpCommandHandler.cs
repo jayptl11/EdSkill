@@ -6,6 +6,7 @@ using EdSkill.Domain.Entities;
 using MassTransit;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
 
 namespace EdSkill.Application.Features.Auth.Commands.VerifyOtp;
 
@@ -31,7 +32,9 @@ public class VerifyOtpCommandHandler : IRequestHandler<VerifyOtpCommand, Result<
 
         if (!verifyResult.IsSuccess)
         {
-            return Result<VerifyOtpResponse>.Failure(verifyResult.ErrorCode, verifyResult.ErrorMessage);
+            return Result<VerifyOtpResponse>.Failure(
+                verifyResult.ErrorCode ?? "INVALID_OTP",
+                verifyResult.ErrorMessage ?? "Invalid OTP code");
         }
 
         var (data, purpose) = verifyResult.Value;
@@ -56,17 +59,24 @@ public class VerifyOtpCommandHandler : IRequestHandler<VerifyOtpCommand, Result<
         string registrationData,
         CancellationToken cancellationToken)
     {
-        var parts = registrationData.Split('|');
-
-        if (parts.Length != 4)
+        RegistrationOtpPayload? payload;
+        try
+        {
+            payload = JsonSerializer.Deserialize<RegistrationOtpPayload>(
+                registrationData,
+                new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+        }
+        catch (JsonException)
         {
             return Result<VerifyOtpResponse>.Failure("INVALID_PURPOSE", "Invalid OTP purpose");
         }
 
-        var username = parts[0];
-        var passwordHash = parts[1];
-        var firstName = parts[2];
-        var lastName = parts[3];
+        if (payload == null || payload.Roles.Count == 0)
+        {
+            return Result<VerifyOtpResponse>.Failure("INVALID_PURPOSE", "Invalid OTP purpose");
+        }
+
+        var username = payload.Username;
 
         var existingUser = await _context.Users
             .AnyAsync(u => u.Email == email || u.Username == username, cancellationToken);
@@ -74,19 +84,20 @@ public class VerifyOtpCommandHandler : IRequestHandler<VerifyOtpCommand, Result<
         if (existingUser)
             return Result<VerifyOtpResponse>.Failure("USER_EXISTS", "User already exists");
 
-        var defaultRole = await _context.Roles
-            .FirstOrDefaultAsync(r => r.RoleName.Equals("Student"), cancellationToken);
-
         var user = new User
         {
             UserId = NewId.NextGuid(),
             Email = email,
             Username = username,
-            PasswordHash = passwordHash,
-            FirstName = firstName,
-            LastName = lastName,
-            CreatedAt = DateTime.Now,
-            RoleId = defaultRole?.RoleId
+            PasswordHash = payload.PasswordHash,
+            FirstName = payload.FirstName,
+            LastName = payload.LastName,
+            CreatedAt = DateTime.UtcNow,
+            Status = "active",
+            Roles = payload.Roles
+                .Select(role => role.Trim().ToLowerInvariant())
+                .Distinct()
+                .ToList()
         };
 
         await _context.Users.AddAsync(user, cancellationToken);

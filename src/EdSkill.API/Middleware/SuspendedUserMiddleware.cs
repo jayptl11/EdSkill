@@ -1,14 +1,14 @@
-﻿using EdSkill.Application.Common.Interfaces;
+using EdSkill.Application.Common.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 
 namespace EdSkill.API.Middleware;
 
-public class BannedUserMiddleware
+public class SuspendedUserMiddleware
 {
     private readonly RequestDelegate _next;
 
-    public BannedUserMiddleware(RequestDelegate next)
+    public SuspendedUserMiddleware(RequestDelegate next)
     {
         _next = next;
     }
@@ -25,14 +25,14 @@ public class BannedUserMiddleware
                     .AsNoTracking()
                     .FirstOrDefaultAsync(u => u.UserId == userId);
 
-                if (user != null && user.Status == "Banned")
+                if (user != null && user.Status == "suspended")
                 {
                     context.Response.StatusCode = StatusCodes.Status403Forbidden;
                     context.Response.ContentType = "application/json";
                     await context.Response.WriteAsJsonAsync(new
                     {
-                        ErrorCode = "USER_BANNED",
-                        ErrorMessage = "Your account has been banned. Please contact support."
+                        ErrorCode = "ACCOUNT_SUSPENDED",
+                        ErrorMessage = "Account is suspended"
                     });
                     return;
                 }

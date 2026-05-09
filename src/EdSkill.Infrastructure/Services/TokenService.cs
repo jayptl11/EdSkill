@@ -35,11 +35,10 @@ public class TokenService : ITokenService
             new Claim(ClaimTypes.Name, user.Username)
         };
 
-        if (user.RoleId.HasValue)
-            claims.Add(new Claim("roleId", user.RoleId.Value.ToString()));
-
-        if (user.Role != null && !string.IsNullOrWhiteSpace(user.Role.RoleName))
-            claims.Add(new Claim(ClaimTypes.Role, user.Role.RoleName));
+        foreach (var role in user.Roles.Where(role => !string.IsNullOrWhiteSpace(role)))
+        {
+            claims.Add(new Claim(ClaimTypes.Role, role));
+        }
 
         var token = new JwtSecurityToken(
             issuer: _settings.Issuer,

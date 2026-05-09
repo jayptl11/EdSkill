@@ -7,7 +7,8 @@ public record RegisterRequest(
     string Username,
     string FirstName,
     string LastName,
-    string Password
+    string Password,
+    IReadOnlyCollection<string>? Roles
 );
 public record VerifyOtpRequest(
     string Email,
@@ -38,8 +39,7 @@ public record LoginResponse(
     string Email,
     string Username,
     DateTime? LastLogin,
-    Guid? RoleId,
-    string? RoleName,
+    IReadOnlyCollection<string> Roles,
     bool ShouldPromptDailyReminderTime
 );
 

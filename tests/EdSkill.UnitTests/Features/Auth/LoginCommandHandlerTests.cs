@@ -72,6 +72,7 @@ public class LoginCommandHandlerTests
             Email = "test@test.com",
             Username = "test",
             PasswordHash = "hash",
+            Roles = new List<string> { "learner", "companion" },
             UserProfile = new UserProfile
             {
                 ProfileId = Guid.NewGuid()
@@ -101,11 +102,39 @@ public class LoginCommandHandlerTests
         result.Value.UserId.Should().Be(user.UserId);
         result.Value.Email.Should().Be(user.Email);
         result.Value.Username.Should().Be(user.Username);
+        result.Value.Roles.Should().BeEquivalentTo("learner", "companion");
         result.Value.ShouldPromptDailyReminderTime.Should().BeFalse();
 
         refreshTokens.Should().HaveCount(1);
         refreshTokens[0].UserId.Should().Be(user.UserId);
         refreshTokens[0].Token.Should().Be("rt");
+    }
+
+    [Fact]
+    public async Task Handle_WhenUserSuspended_ReturnsFailure()
+    {
+        // Arrange
+        var user = new User
+        {
+            UserId = Guid.NewGuid(),
+            Email = "test@test.com",
+            Username = "test",
+            PasswordHash = "hash",
+            Status = "suspended"
+        };
+
+        SetupUsersDbSet(new List<User> { user });
+        SetupTokenBlacklistDbSet(new List<TokenBlacklist>());
+
+        var command = new LoginCommand("test@test.com", "Password123");
+
+        // Act
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        // Assert
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be("ACCOUNT_SUSPENDED");
+        _passwordServiceMock.Verify(x => x.VerifyPassword(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
     }
 
     private void SetupUsersDbSet(List<User> users)

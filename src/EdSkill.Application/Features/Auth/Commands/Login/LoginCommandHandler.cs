@@ -29,15 +29,14 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, Result<LoginRes
         var identifier = request.Identifier.Trim();
 
         var user = await _context.Users
-            .Include(u => u.Role)
             .Include(u => u.UserProfile)
             .FirstOrDefaultAsync(u => u.Email == identifier || u.Username == identifier, cancellationToken);
 
         if (user == null)
             return Result<LoginResponse>.Failure("INVALID_CREDENTIALS", "Invalid username/email or password");
 
-        if (user.Status == "Banned")
-            return Result<LoginResponse>.Failure("USER_BANNED", "Your account has been banned. Please contact support.");
+        if (user.Status == "suspended")
+            return Result<LoginResponse>.Failure("ACCOUNT_SUSPENDED", "Account is suspended");
 
         if (!_passwordService.VerifyPassword(request.Password, user.PasswordHash))
             return Result<LoginResponse>.Failure("INVALID_CREDENTIALS", "Invalid username/email or password");
@@ -76,8 +75,7 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, Result<LoginRes
             user.Email,
             user.Username,
             user.LastLogin,
-            user.RoleId,
-            user.Role?.RoleName,
+            user.Roles,
             false
         ));
     }

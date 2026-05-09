@@ -1,8 +1,10 @@
 ﻿using EdSkill.Application.Common.Interfaces;
 using EdSkill.Application.Common.Models;
+using EdSkill.Application.Features.Auth.DTOs;
 using EdSkill.Domain.Enums;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
 
 namespace EdSkill.Application.Features.Auth.Commands.Register;
 
@@ -44,7 +46,17 @@ public class RegisterCommandHandler : IRequestHandler<RegisterCommand, Result>
         }
 
         var passwordHash = _passwordService.HashPassword(request.Password);
-        var registrationData = $"{request.Username}|{passwordHash}|{request.FirstName}|{request.LastName}";
+        var roles = request.Roles!
+            .Select(role => role.Trim().ToLowerInvariant())
+            .Distinct()
+            .ToArray();
+
+        var registrationData = JsonSerializer.Serialize(new RegistrationOtpPayload(
+            request.Username,
+            passwordHash,
+            request.FirstName,
+            request.LastName,
+            roles));
 
         var result = await _otpCacheService.GenerateAndStoreOtpAsync(
             request.Email, 

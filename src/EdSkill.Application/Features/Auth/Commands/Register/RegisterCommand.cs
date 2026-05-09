@@ -8,5 +8,6 @@ public record RegisterCommand(
     string Username,
     string FirstName,
     string LastName,
-    string Password
+    string Password,
+    IReadOnlyCollection<string>? Roles
 ) : IRequest<Result>;

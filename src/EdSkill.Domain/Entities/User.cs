@@ -13,9 +13,8 @@ namespace EdSkill.Domain.Entities
         public string? LastName { get; set; }
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime? LastLogin { get; set; }
-        public string? Status { get; set; } = "Active";
-        public Guid? RoleId { get; set; }
-        public virtual Role? Role { get; set; }
+        public string? Status { get; set; } = "active";
+        public List<string> Roles { get; set; } = new() { "learner" };
         public virtual UserProfile? UserProfile { get; set; }
         public virtual ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
         public decimal TokenBalance { get; set; } = 0m;

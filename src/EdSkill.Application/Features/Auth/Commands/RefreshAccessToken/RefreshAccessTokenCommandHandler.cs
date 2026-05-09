@@ -27,7 +27,6 @@ public class RefreshAccessTokenCommandHandler : IRequestHandler<RefreshAccessTok
 
         var storedToken = await _context.RefreshTokens
             .Include(rt => rt.User)
-                .ThenInclude(u => u.Role)
             .FirstOrDefaultAsync(rt => rt.Token == hashedRequestToken, cancellationToken);
 
         if (storedToken == null)
@@ -56,6 +55,9 @@ public class RefreshAccessTokenCommandHandler : IRequestHandler<RefreshAccessTok
 
         var user = storedToken.User;
 
+        if (user.Status == "suspended")
+            return Result<LoginResponse>.Failure("ACCOUNT_SUSPENDED", "Account is suspended");
+
         storedToken.RevokedAt = now;
 
         var accessToken = _tokenService.GenerateAccessToken(user);
@@ -79,8 +81,7 @@ public class RefreshAccessTokenCommandHandler : IRequestHandler<RefreshAccessTok
             user.Email,
             user.Username,
             user.LastLogin,
-            user.RoleId,
-            user.Role?.RoleName,
+            user.Roles,
             false
         ));
     }

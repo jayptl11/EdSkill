@@ -77,7 +77,7 @@ app.UseHttpsRedirection();
 app.UseCors("AllowFrontend");
 app.UseAuthentication();
 app.UseMiddleware<TokenBlacklistMiddleware>();
-app.UseMiddleware<BannedUserMiddleware>();
+app.UseMiddleware<SuspendedUserMiddleware>();
 app.UseAuthorization();
 app.MapControllers();
 

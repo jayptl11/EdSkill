@@ -31,7 +31,6 @@ public class LoginWithGoogleCommandHandler : IRequestHandler<LoginWithGoogleComm
             return Result<LoginResponse>.Failure("INVALID_GOOGLE_TOKEN", "Invalid Google token");
 
         var user = await _context.Users
-            .Include(u => u.Role)
             .Include(u => u.UserProfile)
             .FirstOrDefaultAsync(u => u.Email == googleUser.Email, cancellationToken);
 
@@ -39,9 +38,6 @@ public class LoginWithGoogleCommandHandler : IRequestHandler<LoginWithGoogleComm
         {
             var username = googleUser.Email.Split('@')[0];
             var finalUsername = await EnsureUniqueUsernameAsync(username, cancellationToken);
-
-            var defaultRole = await _context.Roles
-                .FirstOrDefaultAsync(r => r.RoleName == "Student", cancellationToken);
 
             user = new User
             {
@@ -52,8 +48,8 @@ public class LoginWithGoogleCommandHandler : IRequestHandler<LoginWithGoogleComm
                 FirstName = googleUser.GivenName,
                 LastName = googleUser.FamilyName,
                 CreatedAt = DateTime.UtcNow,
-                Status = "Active",
-                RoleId = defaultRole?.RoleId
+                Status = "active",
+                Roles = new List<string> { "learner" }
             };
 
             _context.Users.Add(user);
@@ -66,13 +62,11 @@ public class LoginWithGoogleCommandHandler : IRequestHandler<LoginWithGoogleComm
 
             _context.UserProfiles.Add(userProfile);
             await _context.SaveChangesAsync(cancellationToken);
-
-            user.Role = defaultRole;
             user.UserProfile = userProfile;
         }
 
-        if (user.Status == "Banned")
-            return Result<LoginResponse>.Failure("USER_BANNED", "Your account has been banned. Please contact support.");
+        if (user.Status == "suspended")
+            return Result<LoginResponse>.Failure("ACCOUNT_SUSPENDED", "Account is suspended");
 
         user.LastLogin = DateTime.UtcNow;
 
@@ -97,8 +91,7 @@ public class LoginWithGoogleCommandHandler : IRequestHandler<LoginWithGoogleComm
             user.Email,
             user.Username,
             user.LastLogin,
-            user.RoleId,
-            user.Role?.RoleName,
+            user.Roles,
             false
         ));
     }
