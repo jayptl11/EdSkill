@@ -1,4 +1,4 @@
-name: Deploy SmarterASP
+name: Auto Deploy SmarterASP
 
 on:
   push:
@@ -6,29 +6,28 @@ on:
       - main
 
 jobs:
-  deploy:
+  build-and-deploy:
     runs-on: windows-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-dotnet@v4
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
 
-      - name: Restore
+      - name: Restore packages
         run: dotnet restore
 
-      - name: Publish
-        run: dotnet publish -c Release -o ./publish /p:UseAppHost=false
-
-      - name: WebDeploy
-        shell: powershell
+      - name: Publish & Deploy via Web Deploy
         run: |
-          $msdeploy = "${env:ProgramFiles}\IIS\Microsoft Web Deploy V3\msdeploy.exe"
-
-          & $msdeploy `
-            -verb:sync `
-            -source:contentPath="./publish" `
-            -dest:contentPath="${{ secrets.DEPLOY_SITE }}",computerName="${{ secrets.DEPLOY_URL }}",userName="${{ secrets.DEPLOY_USER }}",password="${{ secrets.DEPLOY_PASS }}",authType="Basic" `
-            -allowUntrusted
+          dotnet publish -c Release `
+            /p:WebPublishMethod=MSDeploy `
+            /p:MSDeployServiceURL="${{ secrets.DEPLOY_URL }}" `
+            /p:DeployIisAppPath="${{ secrets.DEPLOY_SITE }}" `
+            /p:UserName="${{ secrets.DEPLOY_USER }}" `
+            /p:Password="${{ secrets.DEPLOY_PASS }}" `
+            /p:AllowUntrustedCertificate=true `
+            /p:UseAppHost=false
