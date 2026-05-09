@@ -1,4 +1,4 @@
-name: Auto Deploy SmarterASP
+name: Deploy SmarterASP WebDeploy
 
 on:
   push:
@@ -6,11 +6,11 @@ on:
       - main
 
 jobs:
-  build-and-deploy:
+  deploy:
     runs-on: windows-latest
 
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Setup .NET
@@ -18,19 +18,15 @@ jobs:
         with:
           dotnet-version: '8.0.x'
 
-      - name: Restore packages
+      - name: Restore
         run: dotnet restore
 
-      - name: Publish app
+      - name: Publish
         run: dotnet publish -c Release -o ./publish /p:UseAppHost=false
 
-      - name: Deploy to SmarterASP
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+      - name: Deploy via WebDeploy
+        uses: azure/webapps-deploy@v2
         with:
-          server: ${{ secrets.FTP_SERVER }}
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
-          protocol: ftp
-          port: 21
-          local-dir: ./publish/
-          server-dir: /site1/wwwroot/   
+          app-name: long9z01-001-site1
+          publish-profile: ${{ secrets.PUBLISH_PROFILE }}
+          package: ./publish
