@@ -1,4 +1,4 @@
-name: Deploy SmarterASP WebDeploy
+name: Deploy SmarterASP
 
 on:
   push:
@@ -10,11 +10,9 @@ jobs:
     runs-on: windows-latest
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
 
@@ -24,9 +22,13 @@ jobs:
       - name: Publish
         run: dotnet publish -c Release -o ./publish /p:UseAppHost=false
 
-      - name: Deploy via WebDeploy
-        uses: azure/webapps-deploy@v2
-        with:
-          app-name: long9z01-001-site1
-          publish-profile: ${{ secrets.PUBLISH_PROFILE }}
-          package: ./publish
+      - name: WebDeploy
+        shell: powershell
+        run: |
+          $msdeploy = "${env:ProgramFiles}\IIS\Microsoft Web Deploy V3\msdeploy.exe"
+
+          & $msdeploy `
+            -verb:sync `
+            -source:contentPath="./publish" `
+            -dest:contentPath="${{ secrets.DEPLOY_SITE }}",computerName="${{ secrets.DEPLOY_URL }}",userName="${{ secrets.DEPLOY_USER }}",password="${{ secrets.DEPLOY_PASS }}",authType="Basic" `
+            -allowUntrusted
