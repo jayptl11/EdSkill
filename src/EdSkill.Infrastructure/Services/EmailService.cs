@@ -80,7 +80,7 @@ public class EmailService : IEmailService
 			})
 		};
 
-		request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _settings.ApiKey);
+		request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", GetResendApiKey());
 
 		using var response = await _httpClient.SendAsync(request, cancellationToken);
 
@@ -96,15 +96,22 @@ public class EmailService : IEmailService
 
 	private void EnsureResendSettingsConfigured()
 	{
-		if (string.IsNullOrWhiteSpace(_settings.ApiKey))
+		if (string.IsNullOrWhiteSpace(GetResendApiKey()))
 		{
-			throw new InvalidOperationException("EmailSettings:ApiKey is required for Resend.");
+			throw new InvalidOperationException("EmailSettings:ResendApiKey is required for Resend.");
 		}
 
 		if (string.IsNullOrWhiteSpace(_settings.SenderEmail))
 		{
 			throw new InvalidOperationException("EmailSettings:SenderEmail is required for Resend.");
 		}
+	}
+
+	private string GetResendApiKey()
+	{
+		return string.IsNullOrWhiteSpace(_settings.ResendApiKey)
+			? _settings.ApiKey
+			: _settings.ResendApiKey;
 	}
 
 	private string GetSenderAddress()
