@@ -375,5 +375,5 @@ FodyWeavers.xsd
 # SQL files
 *.sql
 
-
+# Markdown notes/docs are local only
 *.md
