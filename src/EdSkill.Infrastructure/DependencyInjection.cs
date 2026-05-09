@@ -25,7 +25,7 @@ public static class DependencyInjection
             provider.GetRequiredService<AppDbContext>());
 
         services.Configure<EmailSettings>(configuration.GetSection(EmailSettings.SectionName));
-        services.AddScoped<IEmailService, EmailService>();
+        services.AddHttpClient<IEmailService, EmailService>();
         services.AddScoped<IOTPService, OTPService>();
         services.AddScoped<IPasswordService, PasswordService>();
         services.Configure<JwtSettings>(configuration.GetSection(JwtSettings.SectionName));

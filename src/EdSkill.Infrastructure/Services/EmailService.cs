@@ -1,5 +1,6 @@
 ﻿using System.Net;
-using System.Net.Mail;
+using System.Net.Http.Headers;
+using System.Net.Http.Json;
 using EdSkill.Application.Common.Interfaces;
 using EdSkill.Infrastructure.Settings;
 using Microsoft.Extensions.Logging;
@@ -9,12 +10,16 @@ namespace EdSkill.Infrastructure.Services;
 
 public class EmailService : IEmailService
 {
+	private const string ResendEmailsEndpoint = "https://api.resend.com/emails";
+
 	private readonly EmailSettings _settings;
+	private readonly HttpClient _httpClient;
 	private readonly ILogger<EmailService> _logger;
 
-	public EmailService(IOptions<EmailSettings> settings, ILogger<EmailService> logger)
+	public EmailService(IOptions<EmailSettings> settings, HttpClient httpClient, ILogger<EmailService> logger)
 	{
 		_settings = settings.Value;
+		_httpClient = httpClient;
 		_logger = logger;
 	}
 
@@ -22,18 +27,12 @@ public class EmailService : IEmailService
 	{
 		try
 		{
-			using var smtpClient = CreateSmtpClient();
+			await SendResendEmailAsync(
+				email,
+				$"EdSkill - {subject}",
+				GetNotificationEmailTemplate(subject, message),
+				cancellationToken);
 
-			var mailMessage = new MailMessage
-			{
-				From = new MailAddress(_settings.SenderEmail, _settings.SenderName),
-				Subject = $"EdSkill - {subject}",
-				Body = GetNotificationEmailTemplate(subject, message),
-				IsBodyHtml = true
-			};
-			mailMessage.To.Add(email);
-
-			await smtpClient.SendMailAsync(mailMessage, cancellationToken);
 			_logger.LogInformation("Notification email sent successfully to {Email}", email);
 		}
 		catch (Exception ex)
@@ -47,18 +46,12 @@ public class EmailService : IEmailService
 	{
 		try
 		{
-			using var smtpClient = CreateSmtpClient();
+			await SendResendEmailAsync(
+				email,
+				"EdSkill - Email Verification Code",
+				GetOtpEmailTemplate(otp),
+				cancellationToken);
 
-			var mailMessage = new MailMessage
-			{
-				From = new MailAddress(_settings.SenderEmail, _settings.SenderName),
-				Subject = "EdSkill - Email Verification Code",
-				Body = GetOtpEmailTemplate(otp),
-				IsBodyHtml = true
-			};
-			mailMessage.To.Add(email);
-
-			await smtpClient.SendMailAsync(mailMessage, cancellationToken);
 			_logger.LogInformation("OTP email sent successfully to {Email}", email);
 		}
 		catch (Exception ex)
@@ -68,16 +61,62 @@ public class EmailService : IEmailService
 		}
 	}
 
-	// -------------------------------------------------------------------------
-	// SMTP CLIENT
-	// -------------------------------------------------------------------------
-
-	private SmtpClient CreateSmtpClient() => new(_settings.SmtpHost, _settings.SmtpPort)
+	private async Task SendResendEmailAsync(
+		string email,
+		string subject,
+		string html,
+		CancellationToken cancellationToken)
 	{
-		Credentials = new NetworkCredential(_settings.SenderEmail, _settings.SenderPassword),
-		EnableSsl = _settings.EnableSsl,
-		DeliveryMethod = SmtpDeliveryMethod.Network
-	};
+		EnsureResendSettingsConfigured();
+
+		using var request = new HttpRequestMessage(HttpMethod.Post, ResendEmailsEndpoint)
+		{
+			Content = JsonContent.Create(new
+			{
+				from = GetSenderAddress(),
+				to = new[] { email },
+				subject,
+				html
+			})
+		};
+
+		request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _settings.ApiKey);
+
+		using var response = await _httpClient.SendAsync(request, cancellationToken);
+
+		if (response.IsSuccessStatusCode)
+		{
+			return;
+		}
+
+		var responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
+		throw new InvalidOperationException(
+			$"Resend email request failed with status {(int)response.StatusCode}: {responseBody}");
+	}
+
+	private void EnsureResendSettingsConfigured()
+	{
+		if (string.IsNullOrWhiteSpace(_settings.ApiKey))
+		{
+			throw new InvalidOperationException("EmailSettings:ApiKey is required for Resend.");
+		}
+
+		if (string.IsNullOrWhiteSpace(_settings.SenderEmail))
+		{
+			throw new InvalidOperationException("EmailSettings:SenderEmail is required for Resend.");
+		}
+	}
+
+	private string GetSenderAddress()
+	{
+		if (string.IsNullOrWhiteSpace(_settings.SenderName))
+		{
+			return _settings.SenderEmail;
+		}
+
+		var senderName = _settings.SenderName.Replace("\"", string.Empty);
+		return $"{senderName} <{_settings.SenderEmail}>";
+	}
 
 	// -------------------------------------------------------------------------
 	// OTP TEMPLATE
@@ -92,93 +131,65 @@ public class EmailService : IEmailService
 <head>
     <meta charset=""UTF-8"">
     <meta name=""viewport"" content=""width=device-width, initial-scale=1.0"">
-    <title>Email Verification — EdSkill</title>
+    <title>Email Verification - EdSkill</title>
 </head>
-<body style=""margin:0;padding:0;background-color:#E6F1FB;font-family:'Courier New',Courier,monospace;"">
+<body style=""margin:0;padding:0;background-color:#f4f7fb;font-family:Arial,'Segoe UI',Tahoma,sans-serif;color:#172033;"">
     <table role=""presentation"" style=""width:100%;border-collapse:collapse;"">
         <tr>
-            <td align=""center"" style=""padding:36px 16px;"">
-                <table role=""presentation"" style=""width:100%;max-width:600px;border-collapse:collapse;background:#ffffff;border:1.5px solid #0969da;"">
-
-                    <!-- Header -->
+            <td align=""center"" style=""padding:32px 16px;"">
+                <table role=""presentation"" style=""width:100%;max-width:620px;border-collapse:collapse;background:#ffffff;border:1px solid #dbe7f3;border-radius:16px;overflow:hidden;"">
                     <tr>
-                        <td style=""background:#ffffff;padding:0 28px;border-bottom:1.5px solid #0969da;"">
+                        <td style=""padding:28px 32px 22px;background:#0f766e;"">
                             <table role=""presentation"" style=""width:100%;border-collapse:collapse;"">
                                 <tr>
-                                    <td style=""padding:18px 0;"">
+                                    <td>
                                         {GetBrandLogoHtml()}
                                     </td>
-                                    <td align=""right"" style=""padding:0;"">
-                                        <div style=""background:#0969da;padding:0 18px;display:inline-block;"">
-                                            <span style=""font-size:10px;letter-spacing:2px;color:#ffffff;text-transform:uppercase;white-space:nowrap;line-height:60px;display:inline-block;"">SEC // OTP</span>
-                                        </div>
+                                    <td align=""right"" style=""font-size:12px;font-weight:700;color:#ccfbf1;text-transform:uppercase;letter-spacing:1px;"">
+                                        Learning account
                                     </td>
                                 </tr>
                             </table>
                         </td>
                     </tr>
-
-                    <!-- Meta bar -->
                     <tr>
-                        <td style=""background:#E6F1FB;border-bottom:1px solid #B5D4F4;padding:7px 28px;"">
+                        <td style=""padding:34px 32px 8px;"">
+                            <p style=""margin:0 0 10px;font-size:13px;font-weight:700;color:#0f766e;text-transform:uppercase;letter-spacing:1px;"">Verify your email</p>
+                            <h1 style=""margin:0;color:#172033;font-size:28px;line-height:1.25;font-weight:800;"">Welcome to EdSkill</h1>
+                            <p style=""margin:14px 0 0;color:#526173;font-size:15px;line-height:1.7;"">
+                                Enter this code to finish setting up your learning account. The code is valid for <strong style=""color:#172033;"">5 minutes</strong>.
+                            </p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style=""padding:24px 32px 10px;"">
+                            <table role=""presentation"" style=""width:100%;border-collapse:collapse;background:#ecfdf5;border:1px solid #99f6e4;border-radius:14px;"">
+                                <tr>
+                                    <td align=""center"" style=""padding:26px 18px;"">
+                                        <p style=""margin:0 0 10px;color:#0f766e;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;"">Verification code</p>
+                                        <div style=""font-family:'Courier New',Courier,monospace;font-size:40px;line-height:1;font-weight:800;letter-spacing:10px;color:#0f172a;"">{safeOtp}</div>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style=""padding:18px 32px 34px;"">
                             <table role=""presentation"" style=""width:100%;border-collapse:collapse;"">
                                 <tr>
-                                    <td style=""font-size:10px;letter-spacing:1px;color:#185FA5;text-transform:uppercase;"">noreply@edskill.app</td>
-                                    <td align=""right"" style=""font-size:10px;letter-spacing:1px;color:#378ADD;text-transform:uppercase;"">Type: Verification</td>
-                                </tr>
-                            </table>
-                        </td>
-                    </tr>
-
-                    <!-- Body -->
-                    <tr>
-                        <td style=""padding:32px 28px 28px;"">
-                            <p style=""margin:0 0 6px 0;font-size:10px;letter-spacing:2px;color:#378ADD;text-transform:uppercase;"">— Security Check</p>
-                            <h2 style=""margin:0 0 20px 0;font-size:24px;font-weight:700;color:#24292f;line-height:1.2;"">Email Verification</h2>
-                            <p style=""margin:0 0 28px 0;color:#444444;font-size:13px;line-height:1.8;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;"">
-                                Thanks for signing up. Enter the code below to complete your registration.
-                                Valid for <strong style=""color:#24292f;"">5 minutes</strong>.
-                            </p>
-
-                            <!-- OTP Box -->
-                            <table role=""presentation"" style=""width:100%;border-collapse:collapse;margin:0 0 24px 0;"">
-                                <tr>
-                                    <td style=""border:1.5px solid #0969da;"">
-                                        <table role=""presentation"" style=""width:100%;border-collapse:collapse;"">
-                                            <tr>
-                                                <td style=""background:#0969da;padding:8px 20px;"">
-                                                    <span style=""font-size:10px;letter-spacing:2px;color:#ffffff;text-transform:uppercase;"">Verification Code</span>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td style=""padding:24px;text-align:center;background:#ffffff;"">
-                                                    <span style=""font-size:44px;font-weight:700;color:#24292f;letter-spacing:14px;font-variant-numeric:tabular-nums;font-family:'Courier New',Courier,monospace;"">{safeOtp}</span>
-                                                </td>
-                                            </tr>
-                                        </table>
-                                    </td>
-                                </tr>
-                            </table>
-
-                            <!-- Warning notice -->
-                            <table role=""presentation"" style=""width:100%;border-collapse:collapse;margin:0 0 24px 0;"">
-                                <tr>
-                                    <td style=""border-left:3px solid #0969da;background:#E6F1FB;padding:12px 16px;"">
-                                        <p style=""margin:0;font-size:12px;color:#0C447C;line-height:1.7;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;"">
-                                            <strong>NOTICE:</strong> Never share this code. EdSkill support will never ask for your OTP.
+                                    <td style=""padding:14px 16px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;"">
+                                        <p style=""margin:0;color:#526173;font-size:13px;line-height:1.7;"">
+                                            For your safety, do not share this code. EdSkill will never ask for your OTP outside the app.
                                         </p>
                                     </td>
                                 </tr>
                             </table>
-
-                            <p style=""margin:0;color:#888888;font-size:12px;line-height:1.7;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;"">
-                                Didn't request this? Ignore this email — no action needed.
+                            <p style=""margin:18px 0 0;color:#64748b;font-size:13px;line-height:1.7;"">
+                                If you did not request this, you can safely ignore this email.
                             </p>
                         </td>
                     </tr>
-
                     {GetCommonFooterHtml()}
-
                 </table>
             </td>
         </tr>
@@ -201,87 +212,83 @@ public class EmailService : IEmailService
 <head>
     <meta charset=""UTF-8"">
     <meta name=""viewport"" content=""width=device-width, initial-scale=1.0"">
-    <title>{safeSubject} — EdSkill</title>
+    <title>{safeSubject} - EdSkill</title>
 </head>
-<body style=""margin:0;padding:0;background-color:#E6F1FB;font-family:'Courier New',Courier,monospace;"">
+<body style=""margin:0;padding:0;background-color:#f4f7fb;font-family:Arial,'Segoe UI',Tahoma,sans-serif;color:#172033;"">
     <table role=""presentation"" style=""width:100%;border-collapse:collapse;"">
         <tr>
-            <td align=""center"" style=""padding:36px 16px;"">
-                <table role=""presentation"" style=""width:100%;max-width:600px;border-collapse:collapse;background:#ffffff;border:1.5px solid #0969da;"">
-
-                    <!-- Header -->
+            <td align=""center"" style=""padding:32px 16px;"">
+                <table role=""presentation"" style=""width:100%;max-width:620px;border-collapse:collapse;background:#ffffff;border:1px solid #dbe7f3;border-radius:16px;overflow:hidden;"">
                     <tr>
-                        <td style=""background:#ffffff;padding:0 28px;border-bottom:1.5px solid #0969da;"">
+                        <td style=""padding:28px 32px 22px;background:#2563eb;"">
                             <table role=""presentation"" style=""width:100%;border-collapse:collapse;"">
-                                <tr>
-                                    <td style=""padding:18px 0;"">
-                                        {GetBrandLogoHtml()}
-                                    </td>
-                                    <td align=""right"" style=""padding:0;"">
-                                        <div style=""background:#0969da;padding:0 18px;display:inline-block;"">
-                                            <span style=""font-size:10px;letter-spacing:2px;color:#ffffff;text-transform:uppercase;white-space:nowrap;line-height:60px;display:inline-block;"">SYS // NOTIFY</span>
-                                        </div>
-                                    </td>
-                                </tr>
-                            </table>
-                        </td>
-                    </tr>
-
-                    <!-- Meta bar -->
-                    <tr>
-                        <td style=""background:#E6F1FB;border-bottom:1px solid #B5D4F4;padding:7px 28px;"">
-                            <table role=""presentation"" style=""width:100%;border-collapse:collapse;"">
-                                <tr>
-                                    <td style=""font-size:10px;letter-spacing:1px;color:#185FA5;text-transform:uppercase;"">noreply@edskill.app</td>
-                                    <td align=""right"" style=""font-size:10px;letter-spacing:1px;color:#378ADD;text-transform:uppercase;"">Type: Alert</td>
-                                </tr>
-                            </table>
-                        </td>
-                    </tr>
-
-                    <!-- Body -->
-                    <tr>
-                        <td style=""padding:32px 28px 28px;"">
-                            <p style=""margin:0 0 6px 0;font-size:10px;letter-spacing:2px;color:#378ADD;text-transform:uppercase;"">— Notification</p>
-                            <h2 style=""margin:0 0 20px 0;font-size:24px;font-weight:700;color:#24292f;line-height:1.2;"">{safeSubject}</h2>
-
-                            <!-- Message block -->
-                            <table role=""presentation"" style=""width:100%;border-collapse:collapse;margin:0 0 20px 0;"">
-                                <tr>
-                                    <td style=""border-left:3px solid #0969da;background:#E6F1FB;padding:16px 18px;"">
-                                        <p style=""margin:0;color:#0C447C;font-size:14px;line-height:1.8;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;"">{safeMessage}</p>
-                                    </td>
-                                </tr>
-                            </table>
-
-                            <!-- Impact / Action table -->
-                            <table role=""presentation"" style=""width:100%;border-collapse:collapse;margin:0 0 28px 0;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;"">
-                                <tr>
-                                    <td style=""padding:10px 0;border-top:1px solid #B5D4F4;font-size:10px;letter-spacing:1.5px;color:#378ADD;text-transform:uppercase;width:110px;vertical-align:top;"">Impact</td>
-                                    <td style=""padding:10px 0;border-top:1px solid #B5D4F4;font-size:13px;color:#333333;line-height:1.6;"">Learning progress may be disrupted. Related tasks will continue to accumulate.</td>
-                                </tr>
-                                <tr>
-                                    <td style=""padding:10px 0;border-top:1px solid #B5D4F4;font-size:10px;letter-spacing:1.5px;color:#378ADD;text-transform:uppercase;vertical-align:top;"">Action</td>
-                                    <td style=""padding:10px 0;border-top:1px solid #B5D4F4;font-size:13px;color:#333333;line-height:1.6;"">Open EdSkill → review your timeline → complete pending items.</td>
-                                </tr>
-                            </table>
-
-                            <!-- CTA Button -->
-                            <table role=""presentation"" style=""border-collapse:collapse;"">
                                 <tr>
                                     <td>
+                                        {GetBrandLogoHtml()}
+                                    </td>
+                                    <td align=""right"" style=""font-size:12px;font-weight:700;color:#dbeafe;text-transform:uppercase;letter-spacing:1px;"">
+                                        Course update
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style=""padding:34px 32px 8px;"">
+                            <p style=""margin:0 0 10px;font-size:13px;font-weight:700;color:#2563eb;text-transform:uppercase;letter-spacing:1px;"">Your learning timeline</p>
+                            <h1 style=""margin:0;color:#172033;font-size:28px;line-height:1.25;font-weight:800;"">{safeSubject}</h1>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style=""padding:22px 32px 12px;"">
+                            <table role=""presentation"" style=""width:100%;border-collapse:collapse;background:#eff6ff;border:1px solid #bfdbfe;border-radius:14px;"">
+                                <tr>
+                                    <td style=""padding:20px 22px;"">
+                                        <p style=""margin:0;color:#1e3a8a;font-size:15px;line-height:1.8;"">{safeMessage}</p>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style=""padding:8px 32px 28px;"">
+                            <table role=""presentation"" style=""width:100%;border-collapse:collapse;margin:0 0 24px;"">
+                                <tr>
+                                    <td style=""width:50%;padding:14px 14px 14px 0;vertical-align:top;"">
+                                        <table role=""presentation"" style=""width:100%;border-collapse:collapse;background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;"">
+                                            <tr>
+                                                <td style=""padding:16px;"">
+                                                    <p style=""margin:0 0 6px;color:#2563eb;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1px;"">Keep pace</p>
+                                                    <p style=""margin:0;color:#526173;font-size:13px;line-height:1.6;"">Review your lessons and stay on track with your current course.</p>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                    <td style=""width:50%;padding:14px 0 14px 14px;vertical-align:top;"">
+                                        <table role=""presentation"" style=""width:100%;border-collapse:collapse;background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;"">
+                                            <tr>
+                                                <td style=""padding:16px;"">
+                                                    <p style=""margin:0 0 6px;color:#0f766e;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1px;"">Next action</p>
+                                                    <p style=""margin:0;color:#526173;font-size:13px;line-height:1.6;"">Open EdSkill to continue learning or complete pending activities.</p>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>
+                            </table>
+                            <table role=""presentation"" style=""border-collapse:collapse;"">
+                                <tr>
+                                    <td align=""left"">
                                         <a href=""https://edskill.vercel.app/""
-                                           style=""display:inline-block;background:#0969da;color:#ffffff;font-size:11px;font-weight:700;padding:12px 24px;text-decoration:none;letter-spacing:2px;text-transform:uppercase;font-family:'Courier New',Courier,monospace;"">
-                                            Open EdSkill →
+                                           style=""display:inline-block;background:#2563eb;color:#ffffff;font-size:14px;font-weight:700;padding:13px 22px;text-decoration:none;border-radius:10px;"">
+                                            Open EdSkill
                                         </a>
                                     </td>
                                 </tr>
                             </table>
                         </td>
                     </tr>
-
                     {GetCommonFooterHtml()}
-
                 </table>
             </td>
         </tr>
@@ -296,21 +303,22 @@ public class EmailService : IEmailService
 
 	private static string GetBrandLogoHtml()
 	{
-		return @"<div style=""display: inline-flex; align-items: center; font-family: 'Courier New', Courier, monospace; text-decoration: none; user-select: none;"">
-    <span style=""color: #0969da; font-weight: bold; font-size: 20px;"">&gt;_</span>
-    <span style=""font-size: 20px; font-weight: bold; color: #24292f; margin-left: 6px;"">EdSkill</span>
-    <span style=""display: inline-block; width: 10px; height: 20px; background-color: #0969da; margin-left: 4px;"">&nbsp;</span>
-</div>";
+		return @"<table role=""presentation"" style=""border-collapse:collapse;"">
+    <tr>
+        <td style=""width:38px;height:38px;background:#ffffff;border-radius:10px;text-align:center;vertical-align:middle;color:#0f766e;font-size:16px;font-weight:800;"">Ed</td>
+        <td style=""padding-left:10px;color:#ffffff;font-size:21px;font-weight:800;letter-spacing:0;"">EdSkill</td>
+    </tr>
+</table>";
 	}
 
 	private static string GetCommonFooterHtml()
 	{
 		return @"<tr>
-    <td style=""background:#0969da;padding:14px 28px;"">
-        <table role=""presentation"" style=""width:100%;border-collapse:collapse;font-family:'Courier New',Courier,monospace;"">
+    <td style=""background:#f8fafc;padding:18px 32px;border-top:1px solid #e2e8f0;"">
+        <table role=""presentation"" style=""width:100%;border-collapse:collapse;font-family:Arial,'Segoe UI',Tahoma,sans-serif;"">
             <tr>
-                <td style=""font-size:10px;letter-spacing:1px;color:#B5D4F4;text-transform:uppercase;"">© 2026 EdSkill · Build with consistency.</td>
-                <td align=""right"" style=""font-size:10px;letter-spacing:1px;color:#85B7EB;text-transform:uppercase;"">Automated · Do not reply</td>
+                <td style=""font-size:12px;color:#64748b;line-height:1.6;"">EdSkill helps you keep lessons, practice, and progress in one place.</td>
+                <td align=""right"" style=""font-size:12px;color:#94a3b8;line-height:1.6;"">Automated email. Do not reply.</td>
             </tr>
         </table>
     </td>
