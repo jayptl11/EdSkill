@@ -52,6 +52,17 @@ namespace EdSkill.Infrastructure.Persistence
                       .HasForeignKey<UserProfile>(p => p.UserId)
                       .OnDelete(DeleteBehavior.Cascade);
             });
+
+            modelBuilder.Entity<Role>(entity =>
+            {
+                entity.HasIndex(r => r.RoleName).IsUnique();
+
+                entity.HasData(new Role
+                {
+                    RoleId = Guid.Parse("11111111-1111-1111-1111-111111111111"),
+                    RoleName = "Student"
+                });
+            });
         }
     }
 }
