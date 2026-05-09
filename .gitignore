@@ -377,3 +377,6 @@ FodyWeavers.xsd
 
 # Markdown notes/docs are local only
 *.md
+
+
+*.docx
