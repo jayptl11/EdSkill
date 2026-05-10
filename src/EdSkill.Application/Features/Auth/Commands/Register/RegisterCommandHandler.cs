@@ -1,6 +1,7 @@
 using System.Text.Json;
 using EdSkill.Application.Common.Interfaces;
 using EdSkill.Application.Common.Models;
+using EdSkill.Application.Features.Auth;
 using EdSkill.Application.Features.Auth.DTOs;
 using EdSkill.Domain.Enums;
 using MediatR;
@@ -58,16 +59,15 @@ public class RegisterCommandHandler : IRequestHandler<RegisterCommand, Result>
         }
 
         var passwordHash = _passwordService.HashPassword(request.Password);
-        var roles = request.Roles!
-            .Select(role => role.Trim().ToLowerInvariant())
-            .Distinct()
-            .ToArray();
+        var signupIntent = SignupIntents.Normalize(request.SignupIntent);
+        var roles = SignupIntents.GetRoles(signupIntent);
 
         var registrationData = JsonSerializer.Serialize(new RegistrationOtpPayload(
             request.Username,
             passwordHash,
             request.FirstName,
             request.LastName,
+            signupIntent,
             roles,
             request.AcceptedPolicies!.ToArray()));
 

@@ -13,7 +13,9 @@ public record ProfileDto(
     bool IsPublic,
     IReadOnlyCollection<string> Roles,
     int TotalSessions,
-    DateTime? LastActiveAt
+    DateTime? LastActiveAt,
+    bool IsCompanionOnboardingComplete,
+    IReadOnlyCollection<string> MissingCompanionProfileFields
 );
 
 public record AvatarUploadUrlDto(

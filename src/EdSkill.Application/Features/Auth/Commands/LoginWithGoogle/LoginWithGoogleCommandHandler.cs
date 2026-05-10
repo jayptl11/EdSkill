@@ -1,5 +1,6 @@
 using EdSkill.Application.Common.Interfaces;
 using EdSkill.Application.Common.Models;
+using EdSkill.Application.Features.Auth;
 using EdSkill.Application.Features.Auth.DTOs;
 using EdSkill.Domain.Entities;
 using MassTransit;
@@ -30,6 +31,8 @@ public class LoginWithGoogleCommandHandler : IRequestHandler<LoginWithGoogleComm
         if (googleUser == null)
             return Result<LoginResponse>.Failure("INVALID_GOOGLE_TOKEN", "Invalid Google token");
 
+        var signupIntent = SignupIntents.Normalize(request.SignupIntent);
+
         var user = await _context.Users
             .Include(u => u.UserProfile)
             .FirstOrDefaultAsync(u => u.Email == googleUser.Email, cancellationToken);
@@ -50,7 +53,7 @@ public class LoginWithGoogleCommandHandler : IRequestHandler<LoginWithGoogleComm
                 LastName = googleUser.FamilyName,
                 CreatedAt = now,
                 Status = "active",
-                Roles = new List<string> { "learner" }
+                Roles = SignupIntents.GetRoles(signupIntent).ToList()
             };
 
             _context.Users.Add(user);

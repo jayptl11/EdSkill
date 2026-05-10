@@ -2,6 +2,7 @@ using System.Text.Json;
 using EdSkill.Application.Common.Interfaces;
 using EdSkill.Application.Common.Models;
 using EdSkill.Application.Common.System;
+using EdSkill.Application.Features.Auth;
 using EdSkill.Application.Features.Auth.DTOs;
 using EdSkill.Domain.Entities;
 using EdSkill.Domain.Enums;
@@ -108,10 +109,7 @@ public class VerifyOtpCommandHandler : IRequestHandler<VerifyOtpCommand, Result<
             LastName = payload.LastName,
             CreatedAt = DateTime.UtcNow,
             Status = "active",
-            Roles = payload.Roles
-                .Select(role => role.Trim().ToLowerInvariant())
-                .Distinct()
-                .ToList()
+            Roles = SignupIntents.GetRoles(payload.SignupIntent).ToList()
         };
 
         await _context.Users.AddAsync(user, cancellationToken);

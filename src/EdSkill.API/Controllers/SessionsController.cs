@@ -144,7 +144,9 @@ public class SessionsController : ControllerBase
         return result.ErrorCode switch
         {
             "SESSION_NOT_FOUND" => NotFound(new { result.ErrorCode, result.ErrorMessage }),
+            "PROFILE_NOT_FOUND" => NotFound(new { result.ErrorCode, result.ErrorMessage }),
             "FORBIDDEN" => StatusCode(StatusCodes.Status403Forbidden, new { result.ErrorCode, result.ErrorMessage }),
+            "COMPANION_PROFILE_INCOMPLETE" => UnprocessableEntity(new { result.ErrorCode, result.ErrorMessage }),
             "SESSION_NOT_AVAILABLE" or "SESSION_LIMIT_REACHED" or "SELF_BOOKING" or "INSUFFICIENT_POINTS" or "SESSION_DURATION_INVALID" => BadRequest(new { result.ErrorCode, result.ErrorMessage }),
             "SESSION_INVALID_STATUS" => Conflict(new { result.ErrorCode, result.ErrorMessage }),
             _ => BadRequest(new { result.ErrorCode, result.ErrorMessage })

@@ -7,6 +7,7 @@ internal record RegistrationOtpPayload(
     string PasswordHash,
     string FirstName,
     string LastName,
+    string SignupIntent,
     IReadOnlyCollection<string> Roles,
     IReadOnlyCollection<PolicyAcceptanceInput> AcceptedPolicies
 );

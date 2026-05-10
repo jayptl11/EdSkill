@@ -1,4 +1,5 @@
-﻿using EdSkill.Application.Common.Interfaces;
+using EdSkill.Application.Common.Interfaces;
+using EdSkill.Application.Features.Auth;
 using EdSkill.Application.Features.Auth.Commands.LoginWithGoogle;
 using EdSkill.Domain.Entities;
 using EdSkill.UnitTests.Helpers;
@@ -30,17 +31,14 @@ public class LoginWithGoogleCommandHandlerTests
     [Fact]
     public async Task Handle_WhenGoogleTokenInvalid_ReturnsFailure()
     {
-        // Arrange
         _googleAuthMock
             .Setup(x => x.ValidateIdTokenAsync("bad", It.IsAny<CancellationToken>()))
             .ReturnsAsync((GoogleUserInfo?)null);
 
-        var command = new LoginWithGoogleCommand("bad");
+        var command = new LoginWithGoogleCommand("bad", SignupIntents.Learn);
 
-        // Act
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        // Assert
         result.IsSuccess.Should().BeFalse();
         result.ErrorCode.Should().Be("INVALID_GOOGLE_TOKEN");
     }
@@ -48,7 +46,6 @@ public class LoginWithGoogleCommandHandlerTests
     [Fact]
     public async Task Handle_WhenUserExists_ReturnsAccessToken()
     {
-        // Arrange
         var user = new User
         {
             UserId = Guid.NewGuid(),
@@ -74,13 +71,11 @@ public class LoginWithGoogleCommandHandlerTests
         _tokenServiceMock.Setup(x => x.GenerateRefreshToken()).Returns("rt");
         _contextMock.Setup(x => x.SaveChangesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);
 
-        // Act
-        var result = await _handler.Handle(new LoginWithGoogleCommand("ok"), CancellationToken.None);
+        var result = await _handler.Handle(new LoginWithGoogleCommand("ok", SignupIntents.Teach), CancellationToken.None);
 
-        // Assert
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().NotBeNull();
-        result.Value.AccessToken.Should().Be("jwt");
+        result.Value!.AccessToken.Should().Be("jwt");
         result.Value.RefreshToken.Should().Be("rt");
         result.Value.Email.Should().Be(user.Email);
         result.Value.Username.Should().Be(user.Username);
@@ -93,9 +88,8 @@ public class LoginWithGoogleCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_WhenUserDoesNotExist_CreatesUserAndReturnsAccessToken()
+    public async Task Handle_WhenUserDoesNotExist_CreatesTeachUserAndReturnsAccessToken()
     {
-        // Arrange
         var users = new List<User>();
         SetupUsersDbSet(users);
 
@@ -115,19 +109,17 @@ public class LoginWithGoogleCommandHandlerTests
 
         _contextMock.Setup(x => x.Users.Add(It.IsAny<User>())).Callback<User>(u => users.Add(u));
 
-        // Act
-        var result = await _handler.Handle(new LoginWithGoogleCommand("ok"), CancellationToken.None);
+        var result = await _handler.Handle(new LoginWithGoogleCommand("ok", SignupIntents.Teach), CancellationToken.None);
 
-        // Assert
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().NotBeNull();
         users.Should().HaveCount(1);
         users[0].Email.Should().Be("new@gmail.com");
-        users[0].Roles.Should().BeEquivalentTo("learner");
+        users[0].Roles.Should().BeEquivalentTo("learner", "companion");
         users[0].Status.Should().Be("active");
-        result.Value.AccessToken.Should().Be("jwt");
+        result.Value!.AccessToken.Should().Be("jwt");
         result.Value.RefreshToken.Should().Be("rt");
-        result.Value.Roles.Should().BeEquivalentTo("learner");
+        result.Value.Roles.Should().BeEquivalentTo("learner", "companion");
         result.Value.ShouldPromptDailyReminderTime.Should().BeFalse();
 
         userProfiles.Should().HaveCount(1);
@@ -141,7 +133,6 @@ public class LoginWithGoogleCommandHandlerTests
     [Fact]
     public async Task Handle_WhenUserSuspended_ReturnsFailure()
     {
-        // Arrange
         var user = new User
         {
             UserId = Guid.NewGuid(),
@@ -156,10 +147,8 @@ public class LoginWithGoogleCommandHandlerTests
             .Setup(x => x.ValidateIdTokenAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new GoogleUserInfo(user.Email, "A", "LE", "A LE"));
 
-        // Act
-        var result = await _handler.Handle(new LoginWithGoogleCommand("ok"), CancellationToken.None);
+        var result = await _handler.Handle(new LoginWithGoogleCommand("ok", SignupIntents.Learn), CancellationToken.None);
 
-        // Assert
         result.IsSuccess.Should().BeFalse();
         result.ErrorCode.Should().Be("ACCOUNT_SUSPENDED");
     }

@@ -1,4 +1,5 @@
 using EdSkill.Application.Common.Models;
+using EdSkill.Application.Features.Profile.Commands.EnableCompanion;
 using EdSkill.Application.Features.Profile.Commands.GenerateAvatarUploadUrl;
 using EdSkill.Application.Features.Profile.Commands.UpdateMyProfile;
 using EdSkill.Application.Features.Profile.DTOs;
@@ -73,6 +74,17 @@ public class ProfileController : ControllerBase
     {
         var command = new GenerateAvatarUploadUrlCommand(request.FileName, request.ContentType, request.FileSize);
         var result = await _sender.Send(command, cancellationToken);
+        return ToActionResult(result);
+    }
+
+    [Authorize]
+    [HttpPost("me/enable-companion")]
+    [ProducesResponseType(typeof(ProfileDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> EnableCompanion(CancellationToken cancellationToken)
+    {
+        var result = await _sender.Send(new EnableCompanionCommand(), cancellationToken);
         return ToActionResult(result);
     }
 

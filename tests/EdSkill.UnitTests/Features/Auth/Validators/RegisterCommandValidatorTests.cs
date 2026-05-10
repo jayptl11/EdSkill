@@ -1,4 +1,5 @@
 using EdSkill.Application.Common.Models;
+using EdSkill.Application.Features.Auth;
 using EdSkill.Application.Features.Auth.Commands.Register;
 using FluentAssertions;
 using FluentValidation.TestHelper;
@@ -129,34 +130,26 @@ public class RegisterCommandValidatorTests
     }
 
     [Theory]
-    [InlineData("learner")]
-    [InlineData("companion")]
-    public void Roles_WhenSingleAllowedRole_ShouldNotHaveError(string role)
+    [InlineData(SignupIntents.Learn)]
+    [InlineData(SignupIntents.Teach)]
+    public void SignupIntent_WhenAllowedValue_ShouldNotHaveError(string signupIntent)
     {
-        var command = BuildCommand(roles: [role]);
+        var command = BuildCommand(signupIntent: signupIntent);
         var result = _validator.TestValidate(command);
-        result.ShouldNotHaveValidationErrorFor(x => x.Roles);
+        result.ShouldNotHaveValidationErrorFor(x => x.SignupIntent);
     }
 
     [Fact]
-    public void Roles_WhenLearnerAndCompanion_ShouldNotHaveError()
+    public void SignupIntent_WhenEmpty_ShouldHaveError()
     {
-        var command = BuildCommand(roles: ["learner", "companion"]);
+        var command = BuildCommand(signupIntent: string.Empty);
         var result = _validator.TestValidate(command);
-        result.ShouldNotHaveValidationErrorFor(x => x.Roles);
+        result.ShouldHaveValidationErrorFor(x => x.SignupIntent)
+            .WithErrorCode("INVALID_SIGNUP_INTENT");
     }
 
     [Fact]
-    public void Roles_WhenEmpty_ShouldHaveError()
-    {
-        var command = BuildCommand(roles: Array.Empty<string>());
-        var result = _validator.TestValidate(command);
-        result.ShouldHaveValidationErrorFor(x => x.Roles)
-            .WithErrorCode("INVALID_ROLE");
-    }
-
-    [Fact]
-    public void Roles_WhenNull_ShouldHaveError()
+    public void SignupIntent_WhenNull_ShouldHaveError()
     {
         var command = new RegisterCommand(
             "test@test.com",
@@ -164,29 +157,20 @@ public class RegisterCommandValidatorTests
             "John",
             "Doe",
             "Password123",
-            null,
+            null!,
             ValidAcceptedPolicies);
         var result = _validator.TestValidate(command);
-        result.ShouldHaveValidationErrorFor(x => x.Roles)
-            .WithErrorCode("INVALID_ROLE");
+        result.ShouldHaveValidationErrorFor(x => x.SignupIntent)
+            .WithErrorCode("INVALID_SIGNUP_INTENT");
     }
 
     [Fact]
-    public void Roles_WhenInvalidRole_ShouldHaveError()
+    public void SignupIntent_WhenInvalid_ShouldHaveError()
     {
-        var command = BuildCommand(roles: ["admin"]);
+        var command = BuildCommand(signupIntent: "admin");
         var result = _validator.TestValidate(command);
-        result.ShouldHaveValidationErrorFor(x => x.Roles)
-            .WithErrorCode("INVALID_ROLE");
-    }
-
-    [Fact]
-    public void Roles_WhenDuplicate_ShouldHaveError()
-    {
-        var command = BuildCommand(roles: ["learner", "learner"]);
-        var result = _validator.TestValidate(command);
-        result.ShouldHaveValidationErrorFor(x => x.Roles)
-            .WithErrorCode("INVALID_ROLE");
+        result.ShouldHaveValidationErrorFor(x => x.SignupIntent)
+            .WithErrorCode("INVALID_SIGNUP_INTENT");
     }
 
     [Fact]
@@ -198,7 +182,7 @@ public class RegisterCommandValidatorTests
             "John",
             "Doe",
             "Password123",
-            ["learner"],
+            SignupIntents.Learn,
             null);
         var result = _validator.TestValidate(command);
         result.ShouldHaveValidationErrorFor(x => x.AcceptedPolicies)
@@ -249,7 +233,7 @@ public class RegisterCommandValidatorTests
         string email = "test@test.com",
         string username = "username",
         string password = "Password123",
-        IReadOnlyCollection<string>? roles = null,
+        string signupIntent = SignupIntents.Learn,
         IReadOnlyCollection<PolicyAcceptanceInput>? acceptedPolicies = null)
         => new(
             email,
@@ -257,6 +241,6 @@ public class RegisterCommandValidatorTests
             "John",
             "Doe",
             password,
-            roles ?? ["learner"],
+            signupIntent,
             acceptedPolicies ?? ValidAcceptedPolicies);
 }

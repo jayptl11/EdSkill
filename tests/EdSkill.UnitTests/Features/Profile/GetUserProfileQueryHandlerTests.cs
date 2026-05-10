@@ -83,26 +83,17 @@ public class GetUserProfileQueryHandlerTests
                     },
                     Type = UserSkillType.Teach
                 },
-                new()
-                {
-                    UserSkillId = Guid.NewGuid(),
-                    UserId = userId,
-                    SkillId = Guid.NewGuid(),
-                    Skill = new Skill
-                    {
-                        SkillId = Guid.NewGuid(),
-                        Name = "Excel",
-                        Slug = "excel",
-                        IsActive = true
-                    },
-                    Type = UserSkillType.Learn
-                }
             },
             UserProfile = new UserProfile
             {
                 ProfileId = Guid.NewGuid(),
                 UserId = userId,
                 DisplayName = "Public User",
+                AvatarUrl = "https://cdn.edskill.test/u/avatar.png",
+                Bio = "I teach speaking",
+                University = "FPT University",
+                Faculty = "Software Engineering",
+                YearOfStudy = 4,
                 IsPublic = true
             }
         };
@@ -113,6 +104,8 @@ public class GetUserProfileQueryHandlerTests
 
         result.IsSuccess.Should().BeTrue();
         result.Value!.SkillsToTeach.Should().BeEquivalentTo("Speaking");
-        result.Value.SkillsToLearn.Should().BeEquivalentTo("Excel");
+        result.Value.SkillsToLearn.Should().BeEmpty();
+        result.Value.IsCompanionOnboardingComplete.Should().BeTrue();
+        result.Value.MissingCompanionProfileFields.Should().BeEmpty();
     }
 }

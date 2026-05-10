@@ -1,5 +1,6 @@
 using EdSkill.Application.Common.Interfaces;
 using EdSkill.Application.Common.Models;
+using EdSkill.Application.Features.Profile;
 using EdSkill.Application.Features.Sessions;
 using EdSkill.Application.Features.Sessions.DTOs;
 using EdSkill.Domain.Entities;
@@ -37,7 +38,9 @@ public class CreateSessionOfferCommandHandler : IRequestHandler<CreateSessionOff
 
         return await _transactionExecutor.ExecuteAsync<SessionDto>(async ct =>
         {
-            var companion = await _context.Users.FirstOrDefaultAsync(item => item.UserId == companionId, ct);
+            var companion = await _context.Users
+                .Include(item => item.UserProfile)
+                .FirstOrDefaultAsync(item => item.UserId == companionId, ct);
             if (companion == null)
             {
                 return Result<SessionDto>.Failure("USER_NOT_FOUND", "User was not found.");
@@ -46,6 +49,17 @@ public class CreateSessionOfferCommandHandler : IRequestHandler<CreateSessionOff
             if (!companion.Roles.Contains("companion"))
             {
                 return Result<SessionDto>.Failure("FORBIDDEN", "Only Companion users can create session offers.");
+            }
+
+            if (companion.UserProfile == null)
+            {
+                return Result<SessionDto>.Failure("PROFILE_NOT_FOUND", "Profile was not found.");
+            }
+
+            var onboardingState = CompanionOnboardingRules.Evaluate(companion.UserProfile);
+            if (!onboardingState.IsComplete)
+            {
+                return Result<SessionDto>.Failure("COMPANION_PROFILE_INCOMPLETE", "Companion profile is incomplete.");
             }
 
             var maxPerDay = await _systemConfigService.GetIntValueAsync(Common.System.SystemConfigKeys.SessionMaxPerDayPerCompanion, ct);

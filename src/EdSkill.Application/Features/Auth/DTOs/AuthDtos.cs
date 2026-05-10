@@ -9,8 +9,13 @@ public record RegisterRequest(
     string FirstName,
     string LastName,
     string Password,
-    IReadOnlyCollection<string>? Roles,
+    string? SignupIntent,
     IReadOnlyCollection<PolicyAcceptanceInput>? AcceptedPolicies
+);
+
+public record LoginWithGoogleRequest(
+    string IdToken,
+    string? SignupIntent
 );
 
 public record VerifyOtpRequest(

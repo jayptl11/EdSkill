@@ -1,5 +1,6 @@
 using EdSkill.Application.Common.Interfaces;
 using EdSkill.Application.Common.Models;
+using EdSkill.Application.Features.Auth;
 using EdSkill.Application.Features.Auth.Commands.Register;
 using EdSkill.Domain.Entities;
 using EdSkill.Domain.Enums;
@@ -44,7 +45,7 @@ public class RegisterCommandHandlerTests
     [Fact]
     public async Task Handle_WhenEmailAlreadyExists_ReturnsFailure()
     {
-        var command = new RegisterCommand("existing@test.com", "newuser", "John", "Doe", "Password123", ["learner"], AcceptedPolicies);
+        var command = new RegisterCommand("existing@test.com", "newuser", "John", "Doe", "Password123", SignupIntents.Learn, AcceptedPolicies);
         SetupUsersDbSet([new User { Email = "existing@test.com", Username = "existinguser" }]);
 
         var result = await _handler.Handle(command, CancellationToken.None);
@@ -56,7 +57,7 @@ public class RegisterCommandHandlerTests
     [Fact]
     public async Task Handle_WhenUsernameAlreadyExists_ReturnsFailure()
     {
-        var command = new RegisterCommand("new@test.com", "existinguser", "John", "Doe", "Password123", ["learner"], AcceptedPolicies);
+        var command = new RegisterCommand("new@test.com", "existinguser", "John", "Doe", "Password123", SignupIntents.Learn, AcceptedPolicies);
         SetupUsersDbSet([new User { Email = "other@test.com", Username = "existinguser" }]);
 
         var result = await _handler.Handle(command, CancellationToken.None);
@@ -68,7 +69,7 @@ public class RegisterCommandHandlerTests
     [Fact]
     public async Task Handle_WhenPolicyVersionIsStale_ReturnsFailure()
     {
-        var command = new RegisterCommand("new@test.com", "newuser", "John", "Doe", "Password123", ["learner"], AcceptedPolicies);
+        var command = new RegisterCommand("new@test.com", "newuser", "John", "Doe", "Password123", SignupIntents.Learn, AcceptedPolicies);
         SetupUsersDbSet([]);
         _policyConsentServiceMock
             .Setup(service => service.ValidateRegistrationPolicyAcceptancesAsync(It.IsAny<IReadOnlyCollection<PolicyAcceptanceInput>>(), It.IsAny<CancellationToken>()))
@@ -83,7 +84,7 @@ public class RegisterCommandHandlerTests
     [Fact]
     public async Task Handle_WhenValidRequest_CreatesOtpAndSendsEmail()
     {
-        var command = new RegisterCommand("new@test.com", "newuser", "John", "Doe", "Password123", ["learner", "companion"], AcceptedPolicies);
+        var command = new RegisterCommand("new@test.com", "newuser", "John", "Doe", "Password123", SignupIntents.Teach, AcceptedPolicies);
         SetupUsersDbSet([]);
 
         _policyConsentServiceMock
@@ -101,6 +102,7 @@ public class RegisterCommandHandlerTests
             "new@test.com",
             OtpPurpose.Register,
             It.Is<string>(payload =>
+                payload.Contains("\"SignupIntent\":\"teach\"") &&
                 payload.Contains("\"Roles\":[\"learner\",\"companion\"]") &&
                 payload.Contains("\"PolicyType\":\"terms\"") &&
                 payload.Contains("\"PolicyVersion\":\"2026-05-10.v1\"")),

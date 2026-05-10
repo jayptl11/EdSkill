@@ -22,6 +22,10 @@ internal static class ProfileDtoMapper
             .OrderBy(name => name)
             .ToList();
 
+        profile.SkillsToTeach = skillsToTeach;
+        profile.SkillsToLearn = skillsToLearn;
+        var onboardingState = CompanionOnboardingRules.Evaluate(profile);
+
         return new ProfileDto(
             user.UserId,
             profile.DisplayName,
@@ -35,6 +39,8 @@ internal static class ProfileDtoMapper
             profile.IsPublic,
             user.Roles.AsReadOnly(),
             profile.TotalSessions,
-            profile.LastActiveAt);
+            profile.LastActiveAt,
+            onboardingState.IsComplete,
+            onboardingState.MissingFields);
     }
 }

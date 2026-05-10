@@ -9,6 +9,6 @@ public record RegisterCommand(
     string FirstName,
     string LastName,
     string Password,
-    IReadOnlyCollection<string>? Roles,
+    string SignupIntent,
     IReadOnlyCollection<PolicyAcceptanceInput>? AcceptedPolicies
 ) : IRequest<Result>;

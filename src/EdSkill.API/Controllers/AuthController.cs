@@ -8,6 +8,7 @@ using EdSkill.Application.Features.Auth.Commands.Register;
 using EdSkill.Application.Features.Auth.Commands.ResendOtp;
 using EdSkill.Application.Features.Auth.Commands.ResetPassword;
 using EdSkill.Application.Features.Auth.Commands.VerifyOtp;
+using EdSkill.Application.Features.Auth;
 using EdSkill.Application.Features.Auth.DTOs;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
@@ -39,7 +40,7 @@ public class AuthController : ControllerBase
             request.FirstName,
             request.LastName,
             request.Password,
-            request.Roles,
+            SignupIntents.Normalize(request.SignupIntent),
             request.AcceptedPolicies);
         var result = await _sender.Send(command);
         return ToActionResult(result);
@@ -48,8 +49,9 @@ public class AuthController : ControllerBase
     [HttpPost("login-google")]
     [ProducesResponseType(typeof(LoginResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> LoginGoogle([FromBody] LoginWithGoogleCommand command)
+    public async Task<IActionResult> LoginGoogle([FromBody] LoginWithGoogleRequest request)
     {
+        var command = new LoginWithGoogleCommand(request.IdToken, SignupIntents.Normalize(request.SignupIntent));
         var result = await _sender.Send(command);
         if (result.IsSuccess)
             return Ok(result.Value);

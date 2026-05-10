@@ -14,7 +14,7 @@ namespace EdSkill.UnitTests.Features.Auth;
 public class VerifyOtpCommandHandlerTests
 {
     private const string RegistrationData = """
-        {"Username":"testuser","PasswordHash":"hashedPassword","FirstName":"John","LastName":"Doe","Roles":["learner","companion"],"AcceptedPolicies":[{"PolicyType":"terms","PolicyVersion":"2026-05-10.v1"},{"PolicyType":"privacy","PolicyVersion":"2026-05-10.v1"},{"PolicyType":"points_tokens","PolicyVersion":"2026-05-10.v1"}]}
+        {"Username":"testuser","PasswordHash":"hashedPassword","FirstName":"John","LastName":"Doe","SignupIntent":"teach","Roles":["learner","companion"],"AcceptedPolicies":[{"PolicyType":"terms","PolicyVersion":"2026-05-10.v1"},{"PolicyType":"privacy","PolicyVersion":"2026-05-10.v1"},{"PolicyType":"points_tokens","PolicyVersion":"2026-05-10.v1"}]}
         """;
 
     private readonly Mock<IApplicationDbContext> _contextMock;
@@ -115,6 +115,7 @@ public class VerifyOtpCommandHandlerTests
         result.IsSuccess.Should().BeTrue();
         result.Value!.Purpose.Should().Be(OtpPurpose.Register);
         users.Should().HaveCount(1);
+        users[0].Roles.Should().BeEquivalentTo("learner", "companion");
         profiles.Should().HaveCount(1);
         policyConsents.Should().HaveCount(3);
         policyConsents.Should().OnlyContain(consent => consent.UserId == users[0].UserId);
