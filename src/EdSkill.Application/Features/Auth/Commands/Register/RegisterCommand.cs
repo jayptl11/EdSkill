@@ -1,4 +1,4 @@
-﻿using EdSkill.Application.Common.Models;
+using EdSkill.Application.Common.Models;
 using MediatR;
 
 namespace EdSkill.Application.Features.Auth.Commands.Register;
@@ -9,5 +9,6 @@ public record RegisterCommand(
     string FirstName,
     string LastName,
     string Password,
-    IReadOnlyCollection<string>? Roles
+    IReadOnlyCollection<string>? Roles,
+    IReadOnlyCollection<PolicyAcceptanceInput>? AcceptedPolicies
 ) : IRequest<Result>;

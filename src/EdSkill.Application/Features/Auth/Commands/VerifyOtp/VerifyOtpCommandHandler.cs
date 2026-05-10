@@ -1,12 +1,12 @@
-using EdSkill.Domain.Enums;
+using System.Text.Json;
 using EdSkill.Application.Common.Interfaces;
 using EdSkill.Application.Common.Models;
 using EdSkill.Application.Features.Auth.DTOs;
 using EdSkill.Domain.Entities;
+using EdSkill.Domain.Enums;
 using MassTransit;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
-using System.Text.Json;
 
 namespace EdSkill.Application.Features.Auth.Commands.VerifyOtp;
 
@@ -15,15 +15,18 @@ public class VerifyOtpCommandHandler : IRequestHandler<VerifyOtpCommand, Result<
     private readonly IApplicationDbContext _context;
     private readonly IOTPCacheService _otpCacheService;
     private readonly ITokenService _tokenService;
+    private readonly IPolicyConsentService _policyConsentService;
 
     public VerifyOtpCommandHandler(
         IApplicationDbContext context,
         IOTPCacheService otpCacheService,
-        ITokenService tokenService)
+        ITokenService tokenService,
+        IPolicyConsentService policyConsentService)
     {
         _context = context;
         _otpCacheService = otpCacheService;
         _tokenService = tokenService;
+        _policyConsentService = policyConsentService;
     }
 
     public async Task<Result<VerifyOtpResponse>> Handle(VerifyOtpCommand request, CancellationToken cancellationToken)
@@ -47,7 +50,9 @@ public class VerifyOtpCommandHandler : IRequestHandler<VerifyOtpCommand, Result<
         };
 
         if (!response.IsSuccess)
+        {
             return response;
+        }
 
         await _otpCacheService.DeleteOtpDataAsync(request.Email, cancellationToken);
 
@@ -71,7 +76,7 @@ public class VerifyOtpCommandHandler : IRequestHandler<VerifyOtpCommand, Result<
             return Result<VerifyOtpResponse>.Failure("INVALID_PURPOSE", "Invalid OTP purpose");
         }
 
-        if (payload == null || payload.Roles.Count == 0)
+        if (payload == null || payload.Roles.Count == 0 || payload.AcceptedPolicies.Count == 0)
         {
             return Result<VerifyOtpResponse>.Failure("INVALID_PURPOSE", "Invalid OTP purpose");
         }
@@ -82,7 +87,9 @@ public class VerifyOtpCommandHandler : IRequestHandler<VerifyOtpCommand, Result<
             .AnyAsync(u => u.Email == email || u.Username == username, cancellationToken);
 
         if (existingUser)
+        {
             return Result<VerifyOtpResponse>.Failure("USER_EXISTS", "User already exists");
+        }
 
         var user = new User
         {
@@ -116,6 +123,20 @@ public class VerifyOtpCommandHandler : IRequestHandler<VerifyOtpCommand, Result<
         };
 
         await _context.UserProfiles.AddAsync(userProfile, cancellationToken);
+
+        var policyConsentsResult = await _policyConsentService.BuildRegistrationPolicyConsentsAsync(
+            user.UserId,
+            payload.AcceptedPolicies,
+            cancellationToken);
+
+        if (!policyConsentsResult.IsSuccess)
+        {
+            return Result<VerifyOtpResponse>.Failure(
+                policyConsentsResult.ErrorCode!,
+                policyConsentsResult.ErrorMessage!);
+        }
+
+        _context.PolicyConsents.AddRange(policyConsentsResult.Value!);
         await _context.SaveChangesAsync(cancellationToken);
 
         return Result<VerifyOtpResponse>.Success(new VerifyOtpResponse(

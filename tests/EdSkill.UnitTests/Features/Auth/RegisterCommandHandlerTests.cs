@@ -1,4 +1,4 @@
-﻿using EdSkill.Application.Common.Interfaces;
+using EdSkill.Application.Common.Interfaces;
 using EdSkill.Application.Common.Models;
 using EdSkill.Application.Features.Auth.Commands.Register;
 using EdSkill.Domain.Entities;
@@ -12,10 +12,18 @@ namespace EdSkill.UnitTests.Features.Auth;
 
 public class RegisterCommandHandlerTests
 {
+    private static readonly PolicyAcceptanceInput[] AcceptedPolicies =
+    [
+        new("terms", "2026-05-10.v1"),
+        new("privacy", "2026-05-10.v1"),
+        new("points_tokens", "2026-05-10.v1")
+    ];
+
     private readonly Mock<IApplicationDbContext> _contextMock;
     private readonly Mock<IEmailService> _emailServiceMock;
     private readonly Mock<IOTPCacheService> _otpCacheServiceMock;
     private readonly Mock<IPasswordService> _passwordServiceMock;
+    private readonly Mock<IPolicyConsentService> _policyConsentServiceMock;
     private readonly RegisterCommandHandler _handler;
 
     public RegisterCommandHandlerTests()
@@ -24,21 +32,23 @@ public class RegisterCommandHandlerTests
         _emailServiceMock = new Mock<IEmailService>();
         _otpCacheServiceMock = new Mock<IOTPCacheService>();
         _passwordServiceMock = new Mock<IPasswordService>();
-        _handler = new RegisterCommandHandler(_contextMock.Object, _emailServiceMock.Object, _otpCacheServiceMock.Object, _passwordServiceMock.Object);
+        _policyConsentServiceMock = new Mock<IPolicyConsentService>();
+        _handler = new RegisterCommandHandler(
+            _contextMock.Object,
+            _emailServiceMock.Object,
+            _otpCacheServiceMock.Object,
+            _passwordServiceMock.Object,
+            _policyConsentServiceMock.Object);
     }
 
     [Fact]
     public async Task Handle_WhenEmailAlreadyExists_ReturnsFailure()
     {
-        // Arrange
-        var command = new RegisterCommand("existing@test.com", "newuser", "John", "Doe", "Password123", new[] { "learner" });
-        var users = new List<User> { new() { Email = "existing@test.com", Username = "existinguser" } };
-        SetupUsersDbSet(users);
+        var command = new RegisterCommand("existing@test.com", "newuser", "John", "Doe", "Password123", ["learner"], AcceptedPolicies);
+        SetupUsersDbSet([new User { Email = "existing@test.com", Username = "existinguser" }]);
 
-        // Act
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        // Assert
         result.IsSuccess.Should().BeFalse();
         result.ErrorCode.Should().Be("EMAIL_EXISTS");
     }
@@ -46,41 +56,54 @@ public class RegisterCommandHandlerTests
     [Fact]
     public async Task Handle_WhenUsernameAlreadyExists_ReturnsFailure()
     {
-        // Arrange
-        var command = new RegisterCommand("new@test.com", "existinguser", "John", "Doe", "Password123", new[] { "learner" });
-        var users = new List<User> { new() { Email = "other@test.com", Username = "existinguser" } };
-        SetupUsersDbSet(users);
+        var command = new RegisterCommand("new@test.com", "existinguser", "John", "Doe", "Password123", ["learner"], AcceptedPolicies);
+        SetupUsersDbSet([new User { Email = "other@test.com", Username = "existinguser" }]);
 
-        // Act
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        // Assert
         result.IsSuccess.Should().BeFalse();
         result.ErrorCode.Should().Be("USERNAME_EXISTS");
     }
 
     [Fact]
+    public async Task Handle_WhenPolicyVersionIsStale_ReturnsFailure()
+    {
+        var command = new RegisterCommand("new@test.com", "newuser", "John", "Doe", "Password123", ["learner"], AcceptedPolicies);
+        SetupUsersDbSet([]);
+        _policyConsentServiceMock
+            .Setup(service => service.ValidateRegistrationPolicyAcceptancesAsync(It.IsAny<IReadOnlyCollection<PolicyAcceptanceInput>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Failure("POLICY_VERSION_INVALID", "Policy version is not the active version."));
+
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be("POLICY_VERSION_INVALID");
+    }
+
+    [Fact]
     public async Task Handle_WhenValidRequest_CreatesOtpAndSendsEmail()
     {
-        // Arrange
-        var command = new RegisterCommand("new@test.com", "newuser", "John", "Doe", "Password123", new[] { "learner", "companion" });
-        var users = new List<User>();
-        SetupUsersDbSet(users);
+        var command = new RegisterCommand("new@test.com", "newuser", "John", "Doe", "Password123", ["learner", "companion"], AcceptedPolicies);
+        SetupUsersDbSet([]);
 
+        _policyConsentServiceMock
+            .Setup(service => service.ValidateRegistrationPolicyAcceptancesAsync(It.IsAny<IReadOnlyCollection<PolicyAcceptanceInput>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Success());
         _passwordServiceMock.Setup(x => x.HashPassword(It.IsAny<string>())).Returns("hashedPassword");
         _otpCacheServiceMock.Setup(x => x.GenerateAndStoreOtpAsync(It.IsAny<string>(), It.IsAny<OtpPurpose>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result.Success());
         _otpCacheServiceMock.Setup(x => x.GetLastGeneratedOtp()).Returns("123456");
 
-        // Act
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        // Assert
         result.IsSuccess.Should().BeTrue();
         _otpCacheServiceMock.Verify(x => x.GenerateAndStoreOtpAsync(
             "new@test.com",
             OtpPurpose.Register,
-            It.Is<string>(payload => payload.Contains("\"Roles\":[\"learner\",\"companion\"]")),
+            It.Is<string>(payload =>
+                payload.Contains("\"Roles\":[\"learner\",\"companion\"]") &&
+                payload.Contains("\"PolicyType\":\"terms\"") &&
+                payload.Contains("\"PolicyVersion\":\"2026-05-10.v1\"")),
             It.IsAny<CancellationToken>()), Times.Once);
         _emailServiceMock.Verify(x => x.SendOtpEmailAsync("new@test.com", "123456", It.IsAny<CancellationToken>()), Times.Once);
     }

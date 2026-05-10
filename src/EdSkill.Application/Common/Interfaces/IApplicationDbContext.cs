@@ -7,6 +7,8 @@ namespace EdSkill.Application.Common.Interfaces
     {
         public DbSet<User> Users { get; }
         public DbSet<UserProfile> UserProfiles { get; }
+        public DbSet<PolicyDocument> PolicyDocuments { get; }
+        public DbSet<PolicyConsent> PolicyConsents { get; }
         public DbSet<Skill> Skills { get; }
         public DbSet<UserSkill> UserSkills { get; }
         public DbSet<RefreshToken> RefreshTokens { get; }

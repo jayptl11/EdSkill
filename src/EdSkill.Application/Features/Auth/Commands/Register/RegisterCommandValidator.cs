@@ -1,4 +1,5 @@
-﻿using FluentValidation;
+using EdSkill.Application.Common.Policies;
+using FluentValidation;
 
 namespace EdSkill.Application.Features.Auth.Commands.Register;
 
@@ -52,5 +53,63 @@ public class RegisterCommandValidator : AbstractValidator<RegisterCommand>
             .Must(roles => roles == null || roles.Select(role => role.Trim().ToLowerInvariant()).Distinct().Count() == roles.Count)
             .WithMessage("Roles must not contain duplicates")
             .WithErrorCode("INVALID_ROLE");
+
+        RuleFor(x => x.AcceptedPolicies)
+            .NotNull()
+            .WithMessage("Accepted policies are required")
+            .WithErrorCode("POLICY_VERSION_INVALID")
+            .Must(policies => policies is { Count: > 0 })
+            .WithMessage("Accepted policies are required")
+            .WithErrorCode("POLICY_VERSION_INVALID")
+            .Must(policies => policies == null || policies.Count == PolicyTypeMapper.RequiredRegistrationPolicyTypes.Length)
+            .WithMessage("Terms, privacy, and points/token policies are required")
+            .WithErrorCode("POLICY_VERSION_INVALID")
+            .Must(policies =>
+            {
+                if (policies == null)
+                {
+                    return false;
+                }
+
+                var normalizedTypes = policies
+                    .Select(policy => PolicyTypeMapper.Normalize(policy.PolicyType))
+                    .ToList();
+
+                return PolicyTypeMapper.RequiredRegistrationPolicyTypes.All(normalizedTypes.Contains);
+            })
+            .WithMessage("Terms, privacy, and points/token policies are required")
+            .WithErrorCode("POLICY_VERSION_INVALID")
+            .Must(policies =>
+            {
+                if (policies == null)
+                {
+                    return false;
+                }
+
+                var normalizedTypes = policies
+                    .Select(policy => PolicyTypeMapper.Normalize(policy.PolicyType))
+                    .ToList();
+
+                return normalizedTypes.Distinct().Count() == normalizedTypes.Count;
+            })
+            .WithMessage("Accepted policies must not contain duplicates")
+            .WithErrorCode("POLICY_VERSION_INVALID");
+
+        RuleForEach(x => x.AcceptedPolicies!)
+            .ChildRules(policy =>
+            {
+                policy.RuleFor(x => x.PolicyType)
+                    .NotEmpty()
+                    .WithMessage("Policy type is required")
+                    .WithErrorCode("POLICY_VERSION_INVALID")
+                    .Must(type => PolicyTypeMapper.RequiredRegistrationPolicyTypes.Contains(PolicyTypeMapper.Normalize(type)))
+                    .WithMessage("Policy type is invalid")
+                    .WithErrorCode("POLICY_VERSION_INVALID");
+
+                policy.RuleFor(x => x.PolicyVersion)
+                    .NotEmpty()
+                    .WithMessage("Policy version is required")
+                    .WithErrorCode("POLICY_VERSION_INVALID");
+            });
     }
 }

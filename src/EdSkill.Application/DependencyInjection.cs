@@ -1,5 +1,7 @@
-﻿using System.Reflection;
+using System.Reflection;
 using EdSkill.Application.Common.Behaviors;
+using EdSkill.Application.Common.Interfaces;
+using EdSkill.Application.Common.Services;
 using FluentValidation;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
@@ -14,6 +16,7 @@ public static class DependencyInjection
 
         services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(assembly));
         services.AddValidatorsFromAssembly(assembly);
+        services.AddScoped<IPolicyConsentService, PolicyConsentService>();
 
         // Add validation behavior
         services.AddScoped(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));

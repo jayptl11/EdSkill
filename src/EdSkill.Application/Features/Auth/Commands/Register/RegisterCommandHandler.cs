@@ -1,10 +1,10 @@
-﻿using EdSkill.Application.Common.Interfaces;
+using System.Text.Json;
+using EdSkill.Application.Common.Interfaces;
 using EdSkill.Application.Common.Models;
 using EdSkill.Application.Features.Auth.DTOs;
 using EdSkill.Domain.Enums;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
-using System.Text.Json;
 
 namespace EdSkill.Application.Features.Auth.Commands.Register;
 
@@ -14,17 +14,20 @@ public class RegisterCommandHandler : IRequestHandler<RegisterCommand, Result>
     private readonly IEmailService _emailService;
     private readonly IOTPCacheService _otpCacheService;
     private readonly IPasswordService _passwordService;
+    private readonly IPolicyConsentService _policyConsentService;
 
     public RegisterCommandHandler(
         IApplicationDbContext context,
         IEmailService emailService,
         IOTPCacheService otpCacheService,
-        IPasswordService passwordService)
+        IPasswordService passwordService,
+        IPolicyConsentService policyConsentService)
     {
         _context = context;
         _emailService = emailService;
         _otpCacheService = otpCacheService;
         _passwordService = passwordService;
+        _policyConsentService = policyConsentService;
     }
 
     public async Task<Result> Handle(RegisterCommand request, CancellationToken cancellationToken)
@@ -45,6 +48,15 @@ public class RegisterCommandHandler : IRequestHandler<RegisterCommand, Result>
             return Result.Failure("USERNAME_EXISTS", "Username already taken");
         }
 
+        var policyValidationResult = await _policyConsentService.ValidateRegistrationPolicyAcceptancesAsync(
+            request.AcceptedPolicies,
+            cancellationToken);
+
+        if (!policyValidationResult.IsSuccess)
+        {
+            return policyValidationResult;
+        }
+
         var passwordHash = _passwordService.HashPassword(request.Password);
         var roles = request.Roles!
             .Select(role => role.Trim().ToLowerInvariant())
@@ -56,12 +68,13 @@ public class RegisterCommandHandler : IRequestHandler<RegisterCommand, Result>
             passwordHash,
             request.FirstName,
             request.LastName,
-            roles));
+            roles,
+            request.AcceptedPolicies!.ToArray()));
 
         var result = await _otpCacheService.GenerateAndStoreOtpAsync(
-            request.Email, 
-            OtpPurpose.Register, 
-            registrationData, 
+            request.Email,
+            OtpPurpose.Register,
+            registrationData,
             cancellationToken);
 
         if (!result.IsSuccess)

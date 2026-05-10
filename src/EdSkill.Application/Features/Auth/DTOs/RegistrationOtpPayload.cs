@@ -1,3 +1,5 @@
+using EdSkill.Application.Common.Models;
+
 namespace EdSkill.Application.Features.Auth.DTOs;
 
 internal record RegistrationOtpPayload(
@@ -5,5 +7,6 @@ internal record RegistrationOtpPayload(
     string PasswordHash,
     string FirstName,
     string LastName,
-    IReadOnlyCollection<string> Roles
+    IReadOnlyCollection<string> Roles,
+    IReadOnlyCollection<PolicyAcceptanceInput> AcceptedPolicies
 );

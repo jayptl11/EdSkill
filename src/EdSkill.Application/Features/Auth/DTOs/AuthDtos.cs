@@ -1,4 +1,5 @@
-﻿using EdSkill.Domain.Enums;
+using EdSkill.Application.Common.Models;
+using EdSkill.Domain.Enums;
 
 namespace EdSkill.Application.Features.Auth.DTOs;
 
@@ -8,18 +9,23 @@ public record RegisterRequest(
     string FirstName,
     string LastName,
     string Password,
-    IReadOnlyCollection<string>? Roles
+    IReadOnlyCollection<string>? Roles,
+    IReadOnlyCollection<PolicyAcceptanceInput>? AcceptedPolicies
 );
+
 public record VerifyOtpRequest(
     string Email,
     string Otp
 );
+
 public record ResendOtpRequest(
     string Email
 );
+
 public record ForgotPasswordRequest(
     string Email
 );
+
 public record ResetPasswordRequest(
     string ResetToken,
     string NewPassword

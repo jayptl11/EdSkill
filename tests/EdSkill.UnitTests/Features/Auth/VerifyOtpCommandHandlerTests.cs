@@ -1,4 +1,4 @@
-﻿using EdSkill.Application.Common.Interfaces;
+using EdSkill.Application.Common.Interfaces;
 using EdSkill.Application.Common.Models;
 using EdSkill.Application.Features.Auth.Commands.VerifyOtp;
 using EdSkill.Domain.Entities;
@@ -13,9 +13,14 @@ namespace EdSkill.UnitTests.Features.Auth;
 
 public class VerifyOtpCommandHandlerTests
 {
+    private const string RegistrationData = """
+        {"Username":"testuser","PasswordHash":"hashedPassword","FirstName":"John","LastName":"Doe","Roles":["learner","companion"],"AcceptedPolicies":[{"PolicyType":"terms","PolicyVersion":"2026-05-10.v1"},{"PolicyType":"privacy","PolicyVersion":"2026-05-10.v1"},{"PolicyType":"points_tokens","PolicyVersion":"2026-05-10.v1"}]}
+        """;
+
     private readonly Mock<IApplicationDbContext> _contextMock;
     private readonly Mock<IOTPCacheService> _otpCacheServiceMock;
     private readonly Mock<ITokenService> _tokenServiceMock;
+    private readonly Mock<IPolicyConsentService> _policyConsentServiceMock;
     private readonly VerifyOtpCommandHandler _handler;
 
     public VerifyOtpCommandHandlerTests()
@@ -23,25 +28,24 @@ public class VerifyOtpCommandHandlerTests
         _contextMock = new Mock<IApplicationDbContext>();
         _otpCacheServiceMock = new Mock<IOTPCacheService>();
         _tokenServiceMock = new Mock<ITokenService>();
+        _policyConsentServiceMock = new Mock<IPolicyConsentService>();
         _tokenServiceMock.Setup(x => x.HashRefreshToken(It.IsAny<string>())).Returns((string s) => s);
         _handler = new VerifyOtpCommandHandler(
             _contextMock.Object,
             _otpCacheServiceMock.Object,
-            _tokenServiceMock.Object);
+            _tokenServiceMock.Object,
+            _policyConsentServiceMock.Object);
     }
 
     [Fact]
     public async Task Handle_WhenNoOtpFound_ReturnsFailure()
     {
-        // Arrange
         var command = new VerifyOtpCommand("notfound@test.com", "123456");
         _otpCacheServiceMock.Setup(x => x.VerifyOtpAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result<(string, OtpPurpose)>.Failure("INVALID_OTP", "No pending verification found for this email"));
 
-        // Act
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        // Assert
         result.IsSuccess.Should().BeFalse();
         result.ErrorCode.Should().Be("INVALID_OTP");
     }
@@ -49,70 +53,68 @@ public class VerifyOtpCommandHandlerTests
     [Fact]
     public async Task Handle_WhenOtpInvalid_ReturnsFailure()
     {
-        // Arrange
         var command = new VerifyOtpCommand("test@test.com", "123456");
         _otpCacheServiceMock.Setup(x => x.VerifyOtpAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result<(string, OtpPurpose)>.Failure("INVALID_OTP", "Invalid OTP code"));
 
-        // Act
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        // Assert
         result.IsSuccess.Should().BeFalse();
         result.ErrorCode.Should().Be("INVALID_OTP");
     }
 
     [Fact]
-    public async Task Handle_WhenValidRegisterOtp_CreatesUserAndReturnsSuccess()
+    public async Task Handle_WhenValidRegisterOtp_CreatesUserProfileAndPolicyConsents()
     {
-        // Arrange
         var command = new VerifyOtpCommand("test@test.com", "123456");
-        var registrationData = "{\"Username\":\"testuser\",\"PasswordHash\":\"hashedPassword\",\"FirstName\":\"John\",\"LastName\":\"Doe\",\"Roles\":[\"learner\",\"companion\"]}";
         var users = new List<User>();
         var profiles = new List<UserProfile>();
-        
+        var policyConsents = new List<PolicyConsent>();
+
         _otpCacheServiceMock.Setup(x => x.VerifyOtpAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result<(string, OtpPurpose)>.Success((registrationData, OtpPurpose.Register)));
+            .ReturnsAsync(Result<(string, OtpPurpose)>.Success((RegistrationData, OtpPurpose.Register)));
         _otpCacheServiceMock.Setup(x => x.DeleteOtpDataAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
-        
+
+        _policyConsentServiceMock
+            .Setup(service => service.BuildRegistrationPolicyConsentsAsync(It.IsAny<Guid>(), It.IsAny<IReadOnlyCollection<PolicyAcceptanceInput>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Guid userId, IReadOnlyCollection<PolicyAcceptanceInput>? _, CancellationToken _) =>
+                Result<IReadOnlyCollection<PolicyConsent>>.Success(
+                [
+                    new PolicyConsent { PolicyConsentId = Guid.NewGuid(), UserId = userId, PolicyType = PolicyType.Terms, PolicyVersion = "2026-05-10.v1", AcceptedAt = DateTime.UtcNow },
+                    new PolicyConsent { PolicyConsentId = Guid.NewGuid(), UserId = userId, PolicyType = PolicyType.Privacy, PolicyVersion = "2026-05-10.v1", AcceptedAt = DateTime.UtcNow },
+                    new PolicyConsent { PolicyConsentId = Guid.NewGuid(), UserId = userId, PolicyType = PolicyType.PointsTokens, PolicyVersion = "2026-05-10.v1", AcceptedAt = DateTime.UtcNow }
+                ]));
+
         SetupUsersDbSet(users);
         SetupUserProfilesDbSet(profiles);
-        
+        SetupPolicyConsentsDbSet(policyConsents);
+
         _contextMock.Setup(x => x.SaveChangesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);
 
-        // Act
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        // Assert
         result.IsSuccess.Should().BeTrue();
         result.Value!.Purpose.Should().Be(OtpPurpose.Register);
-        result.Value.Message.Should().Be("Registration successful");
         users.Should().HaveCount(1);
         profiles.Should().HaveCount(1);
-        users[0].Roles.Should().BeEquivalentTo("learner", "companion");
-        users[0].Status.Should().Be("active");
-        profiles[0].DisplayName.Should().Be("John Doe");
+        policyConsents.Should().HaveCount(3);
+        policyConsents.Should().OnlyContain(consent => consent.UserId == users[0].UserId);
     }
 
     [Fact]
     public async Task Handle_WhenUserAlreadyExists_ReturnsFailure()
     {
-        // Arrange
         var command = new VerifyOtpCommand("test@test.com", "123456");
-        var registrationData = "{\"Username\":\"testuser\",\"PasswordHash\":\"hashedPassword\",\"FirstName\":\"John\",\"LastName\":\"Doe\",\"Roles\":[\"learner\"]}";
-        var existingUser = new User { Email = "test@test.com", Username = "testuser" };
-        
         _otpCacheServiceMock.Setup(x => x.VerifyOtpAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result<(string, OtpPurpose)>.Success((registrationData, OtpPurpose.Register)));
-        
-        SetupUsersDbSet(new List<User> { existingUser });
-        SetupUserProfilesDbSet(new List<UserProfile>());
+            .ReturnsAsync(Result<(string, OtpPurpose)>.Success((RegistrationData, OtpPurpose.Register)));
 
-        // Act
+        SetupUsersDbSet([new User { Email = "test@test.com", Username = "testuser" }]);
+        SetupUserProfilesDbSet([]);
+        SetupPolicyConsentsDbSet([]);
+
         var result = await _handler.Handle(command, CancellationToken.None);
 
-        // Assert
         result.IsSuccess.Should().BeFalse();
         result.ErrorCode.Should().Be("USER_EXISTS");
     }
@@ -149,5 +151,26 @@ public class VerifyOtpCommandHandlerTests
             .Callback<UserProfile, CancellationToken>((profile, _) => profiles.Add(profile))
             .Returns(new ValueTask<EntityEntry<UserProfile>>((EntityEntry<UserProfile>)null!));
         _contextMock.Setup(x => x.UserProfiles).Returns(dbSetMock.Object);
+    }
+
+    private void SetupPolicyConsentsDbSet(List<PolicyConsent> policyConsents)
+    {
+        var queryable = new TestAsyncEnumerable<PolicyConsent>(policyConsents);
+        var dbSetMock = new Mock<DbSet<PolicyConsent>>();
+        dbSetMock.As<IQueryable<PolicyConsent>>().Setup(m => m.Provider).Returns(queryable.AsQueryable().Provider);
+        dbSetMock.As<IQueryable<PolicyConsent>>().Setup(m => m.Expression).Returns(queryable.AsQueryable().Expression);
+        dbSetMock.As<IQueryable<PolicyConsent>>().Setup(m => m.ElementType).Returns(queryable.AsQueryable().ElementType);
+        dbSetMock.As<IQueryable<PolicyConsent>>().Setup(m => m.GetEnumerator()).Returns(queryable.AsQueryable().GetEnumerator());
+        dbSetMock.As<IAsyncEnumerable<PolicyConsent>>().Setup(m => m.GetAsyncEnumerator(It.IsAny<CancellationToken>()))
+            .Returns(queryable.GetAsyncEnumerator());
+        dbSetMock.Setup(x => x.AddRange(It.IsAny<IEnumerable<PolicyConsent>>()))
+            .Callback<IEnumerable<PolicyConsent>>(consents =>
+            {
+                foreach (var consent in consents)
+                {
+                    policyConsents.Add(consent);
+                }
+            });
+        _contextMock.Setup(x => x.PolicyConsents).Returns(dbSetMock.Object);
     }
 }

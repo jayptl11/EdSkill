@@ -30,9 +30,17 @@ public class AuthController : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
     public async Task<IActionResult> Register([FromBody] RegisterRequest request)
     {
-        var command = new RegisterCommand(request.Email, request.Username, request.FirstName, request.LastName, request.Password, request.Roles);
+        var command = new RegisterCommand(
+            request.Email,
+            request.Username,
+            request.FirstName,
+            request.LastName,
+            request.Password,
+            request.Roles,
+            request.AcceptedPolicies);
         var result = await _sender.Send(command);
         return ToActionResult(result);
     }
@@ -143,6 +151,7 @@ public class AuthController : ControllerBase
             "EMAIL_EXISTS" or "USERNAME_EXISTS" => Conflict(new { result.ErrorCode, result.ErrorMessage }),
             "OTP_RATE_LIMITED" or "RESEND_RATE_LIMITED" => StatusCode(StatusCodes.Status429TooManyRequests, new { result.ErrorCode, result.ErrorMessage }),
             "ACCOUNT_SUSPENDED" => StatusCode(StatusCodes.Status403Forbidden, new { result.ErrorCode, result.ErrorMessage }),
+            "POLICY_DOCUMENT_NOT_FOUND" or "POLICY_VERSION_INVALID" or "UNSUPPORTED_POLICY_TYPE" => BadRequest(new { result.ErrorCode, result.ErrorMessage }),
             _ => BadRequest(new { result.ErrorCode, result.ErrorMessage })
         };
     }
@@ -157,6 +166,7 @@ public class AuthController : ControllerBase
             "EMAIL_EXISTS" or "USERNAME_EXISTS" => Conflict(new { result.ErrorCode, result.ErrorMessage }),
             "OTP_RATE_LIMITED" or "RESEND_RATE_LIMITED" => StatusCode(StatusCodes.Status429TooManyRequests, new { result.ErrorCode, result.ErrorMessage }),
             "ACCOUNT_SUSPENDED" => StatusCode(StatusCodes.Status403Forbidden, new { result.ErrorCode, result.ErrorMessage }),
+            "POLICY_DOCUMENT_NOT_FOUND" or "POLICY_VERSION_INVALID" or "UNSUPPORTED_POLICY_TYPE" => BadRequest(new { result.ErrorCode, result.ErrorMessage }),
             _ => BadRequest(new { result.ErrorCode, result.ErrorMessage })
         };
     }

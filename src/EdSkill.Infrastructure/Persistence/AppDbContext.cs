@@ -1,10 +1,9 @@
+using System.Text.Json;
 using EdSkill.Application.Common.Interfaces;
 using EdSkill.Domain.Entities;
-using EdSkill.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
-using System.Text.Json;
 
 namespace EdSkill.Infrastructure.Persistence
 {
@@ -16,6 +15,8 @@ namespace EdSkill.Infrastructure.Persistence
 
         public DbSet<User> Users => Set<User>();
         public DbSet<UserProfile> UserProfiles => Set<UserProfile>();
+        public DbSet<PolicyDocument> PolicyDocuments => Set<PolicyDocument>();
+        public DbSet<PolicyConsent> PolicyConsents => Set<PolicyConsent>();
         public DbSet<Skill> Skills => Set<Skill>();
         public DbSet<UserSkill> UserSkills => Set<UserSkill>();
         public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
@@ -27,6 +28,8 @@ namespace EdSkill.Infrastructure.Persistence
 
             modelBuilder.Entity<User>().HasKey(e => e.UserId);
             modelBuilder.Entity<UserProfile>().HasKey(e => e.ProfileId);
+            modelBuilder.Entity<PolicyDocument>().HasKey(e => e.PolicyDocumentId);
+            modelBuilder.Entity<PolicyConsent>().HasKey(e => e.PolicyConsentId);
             modelBuilder.Entity<Skill>().HasKey(e => e.SkillId);
             modelBuilder.Entity<UserSkill>().HasKey(e => e.UserSkillId);
             modelBuilder.Entity<RefreshToken>().HasKey(e => e.TokenId);
@@ -63,8 +66,8 @@ namespace EdSkill.Infrastructure.Persistence
                 entity.HasIndex(u => u.Username).IsUnique();
                 entity.Property(u => u.TokenBalance).HasPrecision(18, 2);
                 entity.Property(u => u.Status)
-                      .HasMaxLength(32)
-                      .HasDefaultValue("active");
+                    .HasMaxLength(32)
+                    .HasDefaultValue("active");
 
                 var rolesConverter = new ValueConverter<List<string>, string>(
                     roles => JsonSerializer.Serialize(roles, (JsonSerializerOptions?)null),
@@ -76,20 +79,25 @@ namespace EdSkill.Infrastructure.Persistence
                     roles => roles.ToList());
 
                 entity.Property(u => u.Roles)
-                      .HasConversion(rolesConverter)
-                      .HasColumnType("nvarchar(max)")
-                      .HasDefaultValueSql("N'[\"learner\"]'")
-                      .Metadata.SetValueComparer(rolesComparer);
+                    .HasConversion(rolesConverter)
+                    .HasColumnType("nvarchar(max)")
+                    .HasDefaultValueSql("N'[\"learner\"]'")
+                    .Metadata.SetValueComparer(rolesComparer);
 
                 entity.HasOne(u => u.UserProfile)
-                      .WithOne(p => p.User)
-                      .HasForeignKey<UserProfile>(p => p.UserId)
-                      .OnDelete(DeleteBehavior.Cascade);
+                    .WithOne(p => p.User)
+                    .HasForeignKey<UserProfile>(p => p.UserId)
+                    .OnDelete(DeleteBehavior.Cascade);
 
                 entity.HasMany(u => u.UserSkills)
-                      .WithOne(us => us.User)
-                      .HasForeignKey(us => us.UserId)
-                      .OnDelete(DeleteBehavior.Cascade);
+                    .WithOne(us => us.User)
+                    .HasForeignKey(us => us.UserId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasMany(u => u.PolicyConsents)
+                    .WithOne(consent => consent.User)
+                    .HasForeignKey(consent => consent.UserId)
+                    .OnDelete(DeleteBehavior.Cascade);
             });
 
             modelBuilder.Entity<UserProfile>(entity =>
@@ -132,6 +140,52 @@ namespace EdSkill.Infrastructure.Persistence
                     .HasColumnType("nvarchar(max)")
                     .HasDefaultValueSql("N'[]'")
                     .Metadata.SetValueComparer(stringListComparer);
+            });
+
+            modelBuilder.Entity<PolicyDocument>(entity =>
+            {
+                entity.HasIndex(document => new { document.Slug, document.Version }).IsUnique();
+                entity.Property(document => document.Slug)
+                    .HasMaxLength(120)
+                    .IsRequired();
+                entity.Property(document => document.Category)
+                    .HasMaxLength(64)
+                    .IsRequired();
+                entity.Property(document => document.Audience)
+                    .HasMaxLength(32)
+                    .IsRequired();
+                entity.Property(document => document.PolicyType)
+                    .HasConversion<string>()
+                    .HasMaxLength(64);
+                entity.Property(document => document.Version)
+                    .HasMaxLength(32)
+                    .IsRequired();
+                entity.Property(document => document.Title)
+                    .HasMaxLength(200)
+                    .IsRequired();
+                entity.Property(document => document.Summary)
+                    .HasMaxLength(500)
+                    .IsRequired();
+                entity.Property(document => document.ContentMarkdown)
+                    .HasColumnType("nvarchar(max)")
+                    .IsRequired();
+                entity.Property(document => document.CreatedAt)
+                    .HasDefaultValueSql("GETUTCDATE()");
+                entity.Property(document => document.UpdatedAt)
+                    .HasDefaultValueSql("GETUTCDATE()");
+
+                entity.HasData(PolicySeedData.Documents);
+            });
+
+            modelBuilder.Entity<PolicyConsent>(entity =>
+            {
+                entity.HasIndex(consent => new { consent.UserId, consent.PolicyType, consent.PolicyVersion }).IsUnique();
+                entity.Property(consent => consent.PolicyType)
+                    .HasConversion<string>()
+                    .HasMaxLength(64);
+                entity.Property(consent => consent.PolicyVersion)
+                    .HasMaxLength(32)
+                    .IsRequired();
             });
 
             modelBuilder.Entity<Skill>(entity =>
