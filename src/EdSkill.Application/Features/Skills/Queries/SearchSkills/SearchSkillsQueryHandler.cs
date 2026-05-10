@@ -26,7 +26,7 @@ public class SearchSkillsQueryHandler : IRequestHandler<SearchSkillsQuery, Resul
 
         var skills = await _context.Skills
             .AsNoTracking()
-            .Where(skill => skill.IsActive)
+            .Where(skill => skill.IsActive && !skill.IsDeleted)
             .OrderBy(skill => skill.Name)
             .ToListAsync(cancellationToken);
 

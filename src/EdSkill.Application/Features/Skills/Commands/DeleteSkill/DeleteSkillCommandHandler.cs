@@ -19,13 +19,14 @@ public class DeleteSkillCommandHandler : IRequestHandler<DeleteSkillCommand, Res
         var skill = await _context.Skills
             .FirstOrDefaultAsync(s => s.SkillId == request.SkillId, cancellationToken);
 
-        if (skill is null)
+        if (skill is null || skill.IsDeleted)
         {
             return Result.Failure("SKILL_NOT_FOUND", "The specified skill does not exist.");
         }
 
-        if (skill.IsActive)
+        if (!skill.IsDeleted)
         {
+            skill.IsDeleted = true;
             skill.IsActive = false;
             skill.UpdatedAt = DateTime.UtcNow;
 

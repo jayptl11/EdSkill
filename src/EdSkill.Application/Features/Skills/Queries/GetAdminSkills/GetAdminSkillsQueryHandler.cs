@@ -23,7 +23,7 @@ public class GetAdminSkillsQueryHandler : IRequestHandler<GetAdminSkillsQuery, R
 
         var skills = await _context.Skills
             .AsNoTracking()
-            .Where(skill => request.IncludeInactive || skill.IsActive)
+            .Where(skill => !skill.IsDeleted && (request.IncludeInactive || skill.IsActive))
             .OrderBy(skill => skill.Name)
             .ToListAsync(cancellationToken);
 

@@ -20,7 +20,7 @@ public class UpdateSkillCommandHandler : IRequestHandler<UpdateSkillCommand, Res
         var skill = await _context.Skills
             .FirstOrDefaultAsync(x => x.SkillId == request.SkillId, cancellationToken);
 
-        if (skill is null)
+        if (skill is null || skill.IsDeleted)
         {
             return Result<AdminSkillDto>.Failure("SKILL_NOT_FOUND", "Skill was not found.");
         }
@@ -45,6 +45,7 @@ public class UpdateSkillCommandHandler : IRequestHandler<UpdateSkillCommand, Res
 
         var existingSkills = await _context.Skills
             .AsNoTracking()
+            .Where(s => !s.IsDeleted)
             .ToListAsync(cancellationToken);
 
         var conflictCode = SkillCatalogRules.GetConflictCode(skill.SkillId, name, slug, aliases, existingSkills);

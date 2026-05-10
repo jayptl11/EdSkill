@@ -34,6 +34,7 @@ public class CreateSkillCommandHandler : IRequestHandler<CreateSkillCommand, Res
 
         var existingSkills = await _context.Skills
             .AsNoTracking()
+            .Where(s => !s.IsDeleted)
             .ToListAsync(cancellationToken);
 
         var conflictCode = SkillCatalogRules.GetConflictCode(null, name, slug, aliases, existingSkills);

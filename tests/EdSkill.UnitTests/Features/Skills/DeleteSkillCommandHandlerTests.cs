@@ -19,7 +19,7 @@ public class DeleteSkillCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_WhenSkillExists_SetsIsActiveToFalse()
+    public async Task Handle_WhenSkillExists_SetsIsDeletedToTrueAndIsActiveToFalse()
     {
         var skillId = Guid.NewGuid();
         var skill = new Skill
@@ -27,7 +27,8 @@ public class DeleteSkillCommandHandlerTests
             SkillId = skillId,
             Name = "Speaking",
             Slug = "speaking",
-            IsActive = true
+            IsActive = true,
+            IsDeleted = false
         };
         var skills = new List<Skill> { skill };
 
@@ -39,6 +40,7 @@ public class DeleteSkillCommandHandlerTests
 
         result.IsSuccess.Should().BeTrue();
         skill.IsActive.Should().BeFalse();
+        skill.IsDeleted.Should().BeTrue();
         _contextMock.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
