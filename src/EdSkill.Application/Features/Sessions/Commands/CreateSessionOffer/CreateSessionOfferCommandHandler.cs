@@ -77,12 +77,24 @@ public class CreateSessionOfferCommandHandler : IRequestHandler<CreateSessionOff
                 return Result<SessionDto>.Failure("SESSION_LIMIT_REACHED", "Companion has reached the daily session limit.");
             }
 
+            var skill = await _context.Skills
+                .AsNoTracking()
+                .FirstOrDefaultAsync(item => item.SkillId == request.SkillId, ct);
+            if (skill == null || !skill.IsActive || skill.IsDeleted)
+            {
+                return Result<SessionDto>.Failure("SKILL_NOT_FOUND", "Skill was not found.");
+            }
+
             var session = new Session
             {
                 SessionId = Guid.NewGuid(),
                 CompanionId = companionId,
-                Skill = request.Skill.Trim(),
+                Skill = skill.Name,
                 Description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim(),
+                DeliveryMode = request.DeliveryMode,
+                Location = request.DeliveryMode == SessionDeliveryMode.Offline
+                    ? request.Location!.Trim()
+                    : null,
                 DurationMinutes = request.DurationMinutes,
                 PointCost = request.PointCost,
                 ScheduledAt = request.ScheduledAt,

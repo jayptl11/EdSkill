@@ -13,6 +13,8 @@ public static class SessionDtoMapper
             session.LearnerId,
             session.Skill,
             session.Description,
+            session.DeliveryMode,
+            session.Location,
             session.DurationMinutes,
             session.PointCost,
             session.ScheduledAt,

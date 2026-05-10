@@ -50,7 +50,9 @@ public class ConfirmSessionCommandHandler : IRequestHandler<ConfirmSessionComman
             }
 
             session.Status = SessionStatus.Confirmed;
-            session.JitsiRoomId = $"edskill-{session.SessionId:N}";
+            session.JitsiRoomId = session.DeliveryMode == SessionDeliveryMode.Online
+                ? $"edskill-{session.SessionId:N}"
+                : null;
             session.UpdatedAt = _dateTimeProvider.UtcNow;
 
             return Result<SessionDto>.Success(SessionDtoMapper.Map(session));

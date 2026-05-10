@@ -8,6 +8,8 @@ public record SessionDto(
     Guid? LearnerId,
     string Skill,
     string? Description,
+    SessionDeliveryMode DeliveryMode,
+    string? Location,
     int DurationMinutes,
     int PointCost,
     DateTime ScheduledAt,
@@ -39,8 +41,10 @@ public record SessionStatusDto(
 );
 
 public record CreateSessionRequest(
-    string Skill,
+    Guid SkillId,
     string? Description,
+    SessionDeliveryMode DeliveryMode,
+    string? Location,
     int DurationMinutes,
     int PointCost,
     DateTime ScheduledAt

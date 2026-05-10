@@ -49,6 +49,11 @@ public class JoinSessionCommandHandler : IRequestHandler<JoinSessionCommand, Res
                 return Result<SessionDto>.Failure("SESSION_INVALID_STATUS", "Hành động không hợp lệ với trạng thái hiện tại.");
             }
 
+            if (session.DeliveryMode != SessionDeliveryMode.Online)
+            {
+                return Result<SessionDto>.Failure("SESSION_NOT_ONLINE", "Only online sessions support join tracking.");
+            }
+
             session.ActualStartAt ??= _dateTimeProvider.UtcNow;
             session.Status = SessionStatus.InProgress;
             session.UpdatedAt = _dateTimeProvider.UtcNow;

@@ -29,6 +29,7 @@ namespace EdSkill.Infrastructure.Persistence
         public DbSet<PolicyConsent> PolicyConsents => Set<PolicyConsent>();
         public DbSet<Skill> Skills => Set<Skill>();
         public DbSet<UserSkill> UserSkills => Set<UserSkill>();
+        public DbSet<Review> Reviews => Set<Review>();
         public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
         public DbSet<TokenBlacklist> TokenBlacklist => Set<TokenBlacklist>();
 
@@ -47,6 +48,7 @@ namespace EdSkill.Infrastructure.Persistence
             modelBuilder.Entity<PolicyConsent>().HasKey(e => e.PolicyConsentId);
             modelBuilder.Entity<Skill>().HasKey(e => e.SkillId);
             modelBuilder.Entity<UserSkill>().HasKey(e => e.UserSkillId);
+            modelBuilder.Entity<Review>().HasKey(e => e.ReviewId);
             modelBuilder.Entity<RefreshToken>().HasKey(e => e.TokenId);
             modelBuilder.Entity<TokenBlacklist>().HasKey(e => e.Id);
 
@@ -225,6 +227,11 @@ namespace EdSkill.Infrastructure.Persistence
             {
                 entity.Property(session => session.Skill).HasMaxLength(100).IsRequired();
                 entity.Property(session => session.Description).HasMaxLength(2000);
+                entity.Property(session => session.DeliveryMode)
+                    .HasConversion<string>()
+                    .HasMaxLength(32)
+                    .HasDefaultValue(Domain.Enums.SessionDeliveryMode.Online);
+                entity.Property(session => session.Location).HasMaxLength(500);
                 entity.Property(session => session.Status)
                     .HasConversion<string>()
                     .HasMaxLength(32);
@@ -340,6 +347,21 @@ namespace EdSkill.Infrastructure.Persistence
                 entity.HasOne(us => us.Skill)
                     .WithMany(s => s.UserSkills)
                     .HasForeignKey(us => us.SkillId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<Review>(entity =>
+            {
+                entity.HasIndex(review => new { review.SessionId, review.ReviewerId }).IsUnique();
+                entity.HasIndex(review => new { review.RevieweeId, review.CreatedAt });
+                entity.Property(review => review.Rating).IsRequired();
+                entity.Property(review => review.Comment).HasMaxLength(1000);
+                entity.Property(review => review.CreatedAt).HasDefaultValueSql("GETUTCDATE()");
+                entity.Property(review => review.UpdatedAt).HasDefaultValueSql("GETUTCDATE()");
+
+                entity.HasOne(review => review.Session)
+                    .WithMany()
+                    .HasForeignKey(review => review.SessionId)
                     .OnDelete(DeleteBehavior.Restrict);
             });
         }

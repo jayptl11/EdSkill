@@ -11,6 +11,8 @@ public class Session
     public virtual User? Learner { get; set; }
     public string Skill { get; set; } = string.Empty;
     public string? Description { get; set; }
+    public SessionDeliveryMode DeliveryMode { get; set; } = SessionDeliveryMode.Online;
+    public string? Location { get; set; }
     public int DurationMinutes { get; set; }
     public int PointCost { get; set; }
     public DateTime ScheduledAt { get; set; }

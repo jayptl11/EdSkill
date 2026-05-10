@@ -53,6 +53,11 @@ public class LeaveSessionCommandHandler : IRequestHandler<LeaveSessionCommand, R
                 return Result<SessionDto>.Failure("SESSION_INVALID_STATUS", "Hành động không hợp lệ với trạng thái hiện tại.");
             }
 
+            if (session.DeliveryMode != SessionDeliveryMode.Online)
+            {
+                return Result<SessionDto>.Failure("SESSION_NOT_ONLINE", "Only online sessions support leave tracking.");
+            }
+
             session.ActualEndAt = _dateTimeProvider.UtcNow;
             var duration = request.ActualDuration
                 ?? (session.ActualStartAt.HasValue

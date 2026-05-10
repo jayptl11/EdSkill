@@ -16,6 +16,7 @@ public class CreateSessionOfferCommandHandlerTests
     public async Task Handle_WhenCompanionProfileIncomplete_ReturnsFailure()
     {
         var userId = Guid.NewGuid();
+        var skillId = Guid.NewGuid();
         var users = new List<User>
         {
             new()
@@ -35,9 +36,19 @@ public class CreateSessionOfferCommandHandlerTests
                 }
             }
         };
+        var skills = new List<Skill>
+        {
+            new()
+            {
+                SkillId = skillId,
+                Name = "Speaking",
+                Slug = "speaking",
+                IsActive = true
+            }
+        };
 
-        var result = await CreateHandler(userId, users, []).Handle(
-            new CreateSessionOfferCommand("Speaking", "Desc", 60, 100, DateTime.UtcNow.AddDays(1)),
+        var result = await CreateHandler(userId, users, [], skills).Handle(
+            new CreateSessionOfferCommand(skillId, "Desc", SessionDeliveryMode.Online, null, 60, 100, DateTime.UtcNow.AddDays(1)),
             CancellationToken.None);
 
         result.IsSuccess.Should().BeFalse();
@@ -48,6 +59,7 @@ public class CreateSessionOfferCommandHandlerTests
     public async Task Handle_WhenCompanionProfileComplete_CreatesAvailableSession()
     {
         var userId = Guid.NewGuid();
+        var skillId = Guid.NewGuid();
         var sessions = new List<Session>();
         var users = new List<User>
         {
@@ -69,25 +81,39 @@ public class CreateSessionOfferCommandHandlerTests
                 }
             }
         };
+        var skills = new List<Skill>
+        {
+            new()
+            {
+                SkillId = skillId,
+                Name = "Speaking",
+                Slug = "speaking",
+                IsActive = true
+            }
+        };
 
-        var result = await CreateHandler(userId, users, sessions).Handle(
-            new CreateSessionOfferCommand("Speaking", "Desc", 60, 100, DateTime.UtcNow.AddDays(1)),
+        var result = await CreateHandler(userId, users, sessions, skills).Handle(
+            new CreateSessionOfferCommand(skillId, "Desc", SessionDeliveryMode.Online, null, 60, 100, DateTime.UtcNow.AddDays(1)),
             CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
         sessions.Should().HaveCount(1);
         sessions[0].Status.Should().Be(SessionStatus.Available);
         sessions[0].CompanionId.Should().Be(userId);
+        sessions[0].Skill.Should().Be("Speaking");
+        sessions[0].DeliveryMode.Should().Be(SessionDeliveryMode.Online);
     }
 
     private static CreateSessionOfferCommandHandler CreateHandler(
         Guid userId,
         List<User> users,
-        List<Session> sessions)
+        List<Session> sessions,
+        List<Skill> skills)
     {
         var contextMock = new Mock<IApplicationDbContext>();
         contextMock.SetupGet(x => x.Users).Returns(users.BuildMockDbSet().Object);
         contextMock.SetupGet(x => x.Sessions).Returns(sessions.BuildMockDbSet().Object);
+        contextMock.SetupGet(x => x.Skills).Returns(skills.BuildMockDbSet().Object);
 
         var currentUserServiceMock = new Mock<ICurrentUserService>();
         currentUserServiceMock.Setup(x => x.GetUserId()).Returns(userId);

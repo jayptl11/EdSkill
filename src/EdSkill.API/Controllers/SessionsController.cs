@@ -34,8 +34,10 @@ public class SessionsController : ControllerBase
     public async Task<IActionResult> CreateSession([FromBody] CreateSessionRequest request, CancellationToken cancellationToken)
     {
         var command = new CreateSessionOfferCommand(
-            request.Skill,
+            request.SkillId,
             request.Description,
+            request.DeliveryMode,
+            request.Location,
             request.DurationMinutes,
             request.PointCost,
             request.ScheduledAt);
@@ -147,7 +149,8 @@ public class SessionsController : ControllerBase
             "PROFILE_NOT_FOUND" => NotFound(new { result.ErrorCode, result.ErrorMessage }),
             "FORBIDDEN" => StatusCode(StatusCodes.Status403Forbidden, new { result.ErrorCode, result.ErrorMessage }),
             "COMPANION_PROFILE_INCOMPLETE" => UnprocessableEntity(new { result.ErrorCode, result.ErrorMessage }),
-            "SESSION_NOT_AVAILABLE" or "SESSION_LIMIT_REACHED" or "SELF_BOOKING" or "INSUFFICIENT_POINTS" or "SESSION_DURATION_INVALID" => BadRequest(new { result.ErrorCode, result.ErrorMessage }),
+            "SESSION_NOT_AVAILABLE" or "SESSION_LIMIT_REACHED" or "SELF_BOOKING" or "INSUFFICIENT_POINTS" or "SESSION_DURATION_INVALID" or "SESSION_NOT_ONLINE" => BadRequest(new { result.ErrorCode, result.ErrorMessage }),
+            "SKILL_NOT_FOUND" => NotFound(new { result.ErrorCode, result.ErrorMessage }),
             "SESSION_INVALID_STATUS" => Conflict(new { result.ErrorCode, result.ErrorMessage }),
             _ => BadRequest(new { result.ErrorCode, result.ErrorMessage })
         };
