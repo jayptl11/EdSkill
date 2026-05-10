@@ -1,4 +1,4 @@
-﻿using EdSkill.Application.Common.Interfaces;
+using EdSkill.Application.Common.Interfaces;
 using EdSkill.Infrastructure.Persistence;
 using EdSkill.Infrastructure.Services;
 using EdSkill.Infrastructure.Settings;
@@ -32,6 +32,8 @@ public static class DependencyInjection
         services.AddScoped<ITokenService, TokenService>();
         services.Configure<GoogleAuthSettings>(configuration.GetSection(GoogleAuthSettings.SectionName));
         services.AddScoped<IGoogleAuthService, GoogleAuthService>();
+        services.Configure<R2StorageSettings>(configuration.GetSection(R2StorageSettings.SectionName));
+        services.AddSingleton<IObjectStorageService, R2ObjectStorageService>();
         services.AddHttpContextAccessor();
         services.AddScoped<ICurrentUserService, CurrentUserService>();
         services.AddScoped<IDateTimeProvider, DateTimeProvider>();

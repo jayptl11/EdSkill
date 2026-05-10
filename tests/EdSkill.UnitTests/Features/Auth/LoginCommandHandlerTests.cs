@@ -104,6 +104,7 @@ public class LoginCommandHandlerTests
         result.Value.Username.Should().Be(user.Username);
         result.Value.Roles.Should().BeEquivalentTo("learner", "companion");
         result.Value.ShouldPromptDailyReminderTime.Should().BeFalse();
+        user.UserProfile!.LastActiveAt.Should().NotBeNull();
 
         refreshTokens.Should().HaveCount(1);
         refreshTokens[0].UserId.Should().Be(user.UserId);

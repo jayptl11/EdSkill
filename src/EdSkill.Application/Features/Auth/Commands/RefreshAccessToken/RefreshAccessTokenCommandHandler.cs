@@ -1,4 +1,4 @@
-﻿using EdSkill.Application.Common.Interfaces;
+using EdSkill.Application.Common.Interfaces;
 using EdSkill.Application.Common.Models;
 using EdSkill.Application.Features.Auth.DTOs;
 using EdSkill.Domain.Entities;
@@ -27,6 +27,7 @@ public class RefreshAccessTokenCommandHandler : IRequestHandler<RefreshAccessTok
 
         var storedToken = await _context.RefreshTokens
             .Include(rt => rt.User)
+            .ThenInclude(user => user.UserProfile)
             .FirstOrDefaultAsync(rt => rt.Token == hashedRequestToken, cancellationToken);
 
         if (storedToken == null)
@@ -34,8 +35,6 @@ public class RefreshAccessTokenCommandHandler : IRequestHandler<RefreshAccessTok
 
         if (storedToken.RevokedAt != null)
         {
-            // Token reuse detected — possible token theft
-            // Revoke ALL refresh tokens for this user to kill hacker's session
             var allActiveTokens = await _context.RefreshTokens
                 .Where(rt => rt.UserId == storedToken.UserId && rt.RevokedAt == null)
                 .ToListAsync(cancellationToken);
@@ -57,6 +56,12 @@ public class RefreshAccessTokenCommandHandler : IRequestHandler<RefreshAccessTok
 
         if (user.Status == "suspended")
             return Result<LoginResponse>.Failure("ACCOUNT_SUSPENDED", "Account is suspended");
+
+        if (user.UserProfile != null)
+        {
+            user.UserProfile.LastActiveAt = now;
+            user.UserProfile.UpdatedAt = now;
+        }
 
         storedToken.RevokedAt = now;
 

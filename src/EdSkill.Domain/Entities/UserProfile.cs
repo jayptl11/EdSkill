@@ -1,8 +1,5 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace EdSkill.Domain.Entities
 {
@@ -12,11 +9,23 @@ namespace EdSkill.Domain.Entities
         public Guid UserId { get; set; }
         public virtual User User { get; set; } = null!;
 
+        public string DisplayName { get; set; } = string.Empty;
         public string? Bio { get; set; }
         public string? AvatarUrl { get; set; }
+        public string? University { get; set; }
+        public string? Faculty { get; set; }
+        public int? YearOfStudy { get; set; }
+        public List<string> SkillsToTeach { get; set; } = new();
+        public List<string> SkillsToLearn { get; set; } = new();
+        public bool IsPublic { get; set; } = true;
+        public double ReputationScore { get; set; }
+        public int TotalSessions { get; set; }
+        public DateTime? LastActiveAt { get; set; }
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+
         public DateTime? DateOfBirth { get; set; }
         public string? Phone { get; set; }
         public string? Address { get; set; }
-        public DateTime? UpdatedAt { get; set; }
     }
 }

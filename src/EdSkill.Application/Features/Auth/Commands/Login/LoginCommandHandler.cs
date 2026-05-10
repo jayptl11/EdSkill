@@ -1,4 +1,4 @@
-﻿using EdSkill.Application.Common.Interfaces;
+using EdSkill.Application.Common.Interfaces;
 using EdSkill.Application.Common.Models;
 using EdSkill.Application.Features.Auth.DTOs;
 using EdSkill.Domain.Entities;
@@ -53,6 +53,11 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, Result<LoginRes
         }
 
         user.LastLogin = now;
+        if (user.UserProfile != null)
+        {
+            user.UserProfile.LastActiveAt = now;
+            user.UserProfile.UpdatedAt = now;
+        }
 
         var accessToken = _tokenService.GenerateAccessToken(user);
 

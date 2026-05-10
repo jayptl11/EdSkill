@@ -1,4 +1,4 @@
-﻿using EdSkill.Domain.Enums;
+using EdSkill.Domain.Enums;
 using EdSkill.Application.Common.Interfaces;
 using EdSkill.Application.Common.Models;
 using EdSkill.Application.Features.Auth.DTOs;
@@ -102,10 +102,17 @@ public class VerifyOtpCommandHandler : IRequestHandler<VerifyOtpCommand, Result<
 
         await _context.Users.AddAsync(user, cancellationToken);
 
+        var now = DateTime.UtcNow;
         var userProfile = new UserProfile
         {
             ProfileId = NewId.NextGuid(),
-            UserId = user.UserId
+            UserId = user.UserId,
+            DisplayName = BuildDisplayName(payload.FirstName, payload.LastName, username),
+            IsPublic = true,
+            CreatedAt = now,
+            UpdatedAt = now,
+            SkillsToTeach = new List<string>(),
+            SkillsToLearn = new List<string>()
         };
 
         await _context.UserProfiles.AddAsync(userProfile, cancellationToken);
@@ -137,5 +144,11 @@ public class VerifyOtpCommandHandler : IRequestHandler<VerifyOtpCommand, Result<
             resetToken,
             "OTP verified successfully"
         ));
+    }
+
+    private static string BuildDisplayName(string firstName, string lastName, string username)
+    {
+        var combinedName = $"{firstName} {lastName}".Trim();
+        return string.IsNullOrWhiteSpace(combinedName) ? username : combinedName;
     }
 }

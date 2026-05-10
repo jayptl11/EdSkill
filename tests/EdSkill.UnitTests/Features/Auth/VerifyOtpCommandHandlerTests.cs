@@ -69,6 +69,7 @@ public class VerifyOtpCommandHandlerTests
         var command = new VerifyOtpCommand("test@test.com", "123456");
         var registrationData = "{\"Username\":\"testuser\",\"PasswordHash\":\"hashedPassword\",\"FirstName\":\"John\",\"LastName\":\"Doe\",\"Roles\":[\"learner\",\"companion\"]}";
         var users = new List<User>();
+        var profiles = new List<UserProfile>();
         
         _otpCacheServiceMock.Setup(x => x.VerifyOtpAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result<(string, OtpPurpose)>.Success((registrationData, OtpPurpose.Register)));
@@ -76,7 +77,7 @@ public class VerifyOtpCommandHandlerTests
             .Returns(Task.CompletedTask);
         
         SetupUsersDbSet(users);
-        SetupUserProfilesDbSet(new List<UserProfile>());
+        SetupUserProfilesDbSet(profiles);
         
         _contextMock.Setup(x => x.SaveChangesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);
 
@@ -88,8 +89,10 @@ public class VerifyOtpCommandHandlerTests
         result.Value!.Purpose.Should().Be(OtpPurpose.Register);
         result.Value.Message.Should().Be("Registration successful");
         users.Should().HaveCount(1);
+        profiles.Should().HaveCount(1);
         users[0].Roles.Should().BeEquivalentTo("learner", "companion");
         users[0].Status.Should().Be("active");
+        profiles[0].DisplayName.Should().Be("John Doe");
     }
 
     [Fact]
@@ -141,7 +144,10 @@ public class VerifyOtpCommandHandlerTests
         dbSetMock.As<IQueryable<UserProfile>>().Setup(m => m.GetEnumerator()).Returns(queryable.AsQueryable().GetEnumerator());
         dbSetMock.As<IAsyncEnumerable<UserProfile>>().Setup(m => m.GetAsyncEnumerator(It.IsAny<CancellationToken>()))
             .Returns(queryable.GetAsyncEnumerator());
-        dbSetMock.Setup(x => x.Add(It.IsAny<UserProfile>()));
+        dbSetMock.Setup(x => x.Add(It.IsAny<UserProfile>())).Callback<UserProfile>(profiles.Add);
+        dbSetMock.Setup(x => x.AddAsync(It.IsAny<UserProfile>(), It.IsAny<CancellationToken>()))
+            .Callback<UserProfile, CancellationToken>((profile, _) => profiles.Add(profile))
+            .Returns(new ValueTask<EntityEntry<UserProfile>>((EntityEntry<UserProfile>)null!));
         _contextMock.Setup(x => x.UserProfiles).Returns(dbSetMock.Object);
     }
 }

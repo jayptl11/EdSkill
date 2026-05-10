@@ -119,7 +119,12 @@ public class RefreshAccessTokenCommandHandlerTests
             UserId = Guid.NewGuid(),
             Email = "test@test.com",
             Username = "test",
-            Roles = new List<string> { "learner" }
+            Roles = new List<string> { "learner" },
+            UserProfile = new UserProfile
+            {
+                ProfileId = Guid.NewGuid(),
+                DisplayName = "Test User"
+            }
         };
 
         var validToken = new RefreshToken
@@ -152,6 +157,7 @@ public class RefreshAccessTokenCommandHandlerTests
         result.Value.UserId.Should().Be(user.UserId);
         result.Value.Email.Should().Be(user.Email);
         result.Value.Roles.Should().BeEquivalentTo("learner");
+        user.UserProfile!.LastActiveAt.Should().NotBeNull();
 
         // Old token should be revoked
         validToken.RevokedAt.Should().NotBeNull("old refresh token should be revoked");

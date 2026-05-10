@@ -27,6 +27,16 @@ namespace EdSkill.Infrastructure.Persistence
             modelBuilder.Entity<RefreshToken>().HasKey(e => e.TokenId);
             modelBuilder.Entity<TokenBlacklist>().HasKey(e => e.Id);
 
+            var stringListConverter = new ValueConverter<List<string>, string>(
+                values => JsonSerializer.Serialize(values, (JsonSerializerOptions?)null),
+                values => JsonSerializer.Deserialize<List<string>>(values, (JsonSerializerOptions?)null) ?? new List<string>());
+
+            var stringListComparer = new ValueComparer<List<string>>(
+                (left, right) => (left ?? new List<string>()).SequenceEqual(right ?? new List<string>()),
+                values => (values ?? new List<string>())
+                    .Aggregate(0, (hash, value) => HashCode.Combine(hash, value.GetHashCode())),
+                values => (values ?? new List<string>()).ToList());
+
             foreach (var entityType in modelBuilder.Model.GetEntityTypes())
             {
                 var primaryKey = entityType.FindPrimaryKey();
@@ -70,6 +80,48 @@ namespace EdSkill.Infrastructure.Persistence
                       .WithOne(p => p.User)
                       .HasForeignKey<UserProfile>(p => p.UserId)
                       .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<UserProfile>(entity =>
+            {
+                entity.HasIndex(p => p.UserId).IsUnique();
+                entity.Property(p => p.DisplayName)
+                    .HasMaxLength(50)
+                    .IsRequired();
+                entity.Property(p => p.Bio)
+                    .HasMaxLength(500);
+                entity.Property(p => p.AvatarUrl)
+                    .HasMaxLength(2048);
+                entity.Property(p => p.University)
+                    .HasMaxLength(200);
+                entity.Property(p => p.Faculty)
+                    .HasMaxLength(200);
+                entity.Property(p => p.Phone)
+                    .HasMaxLength(50);
+                entity.Property(p => p.Address)
+                    .HasMaxLength(500);
+                entity.Property(p => p.IsPublic)
+                    .HasDefaultValue(true);
+                entity.Property(p => p.ReputationScore)
+                    .HasDefaultValue(0d);
+                entity.Property(p => p.TotalSessions)
+                    .HasDefaultValue(0);
+                entity.Property(p => p.CreatedAt)
+                    .HasDefaultValueSql("GETUTCDATE()");
+                entity.Property(p => p.UpdatedAt)
+                    .HasDefaultValueSql("GETUTCDATE()");
+
+                entity.Property(p => p.SkillsToTeach)
+                    .HasConversion(stringListConverter)
+                    .HasColumnType("nvarchar(max)")
+                    .HasDefaultValueSql("N'[]'")
+                    .Metadata.SetValueComparer(stringListComparer);
+
+                entity.Property(p => p.SkillsToLearn)
+                    .HasConversion(stringListConverter)
+                    .HasColumnType("nvarchar(max)")
+                    .HasDefaultValueSql("N'[]'")
+                    .Metadata.SetValueComparer(stringListComparer);
             });
         }
     }

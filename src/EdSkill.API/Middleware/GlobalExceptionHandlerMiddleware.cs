@@ -1,4 +1,4 @@
-﻿using System.Net;
+using System.Net;
 using System.Text.Json;
 using FluentValidation;
 
@@ -33,13 +33,14 @@ public class GlobalExceptionHandlerMiddleware
         context.Response.ContentType = "application/json";
 
         object response;
-        
+
         if (exception is ValidationException validationEx)
         {
-            context.Response.StatusCode = (int)HttpStatusCode.BadRequest;
+            context.Response.StatusCode = StatusCodes.Status422UnprocessableEntity;
             response = new
             {
-                statusCode = (int)HttpStatusCode.BadRequest,
+                statusCode = StatusCodes.Status422UnprocessableEntity,
+                errorCode = "VALIDATION_ERROR",
                 message = "Validation failed",
                 errors = validationEx.Errors.Select(e => new
                 {

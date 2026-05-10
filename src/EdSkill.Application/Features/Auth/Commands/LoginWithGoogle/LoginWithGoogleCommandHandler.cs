@@ -1,4 +1,4 @@
-﻿using EdSkill.Application.Common.Interfaces;
+using EdSkill.Application.Common.Interfaces;
 using EdSkill.Application.Common.Models;
 using EdSkill.Application.Features.Auth.DTOs;
 using EdSkill.Domain.Entities;
@@ -38,6 +38,7 @@ public class LoginWithGoogleCommandHandler : IRequestHandler<LoginWithGoogleComm
         {
             var username = googleUser.Email.Split('@')[0];
             var finalUsername = await EnsureUniqueUsernameAsync(username, cancellationToken);
+            var now = DateTime.UtcNow;
 
             user = new User
             {
@@ -47,7 +48,7 @@ public class LoginWithGoogleCommandHandler : IRequestHandler<LoginWithGoogleComm
                 PasswordHash = string.Empty,
                 FirstName = googleUser.GivenName,
                 LastName = googleUser.FamilyName,
-                CreatedAt = DateTime.UtcNow,
+                CreatedAt = now,
                 Status = "active",
                 Roles = new List<string> { "learner" }
             };
@@ -57,7 +58,14 @@ public class LoginWithGoogleCommandHandler : IRequestHandler<LoginWithGoogleComm
             var userProfile = new UserProfile
             {
                 ProfileId = NewId.NextGuid(),
-                UserId = user.UserId
+                UserId = user.UserId,
+                DisplayName = BuildDisplayName(googleUser.GivenName, googleUser.FamilyName, finalUsername),
+                IsPublic = true,
+                CreatedAt = now,
+                UpdatedAt = now,
+                LastActiveAt = now,
+                SkillsToTeach = new List<string>(),
+                SkillsToLearn = new List<string>()
             };
 
             _context.UserProfiles.Add(userProfile);
@@ -69,6 +77,11 @@ public class LoginWithGoogleCommandHandler : IRequestHandler<LoginWithGoogleComm
             return Result<LoginResponse>.Failure("ACCOUNT_SUSPENDED", "Account is suspended");
 
         user.LastLogin = DateTime.UtcNow;
+        if (user.UserProfile != null)
+        {
+            user.UserProfile.LastActiveAt = user.LastLogin;
+            user.UserProfile.UpdatedAt = user.LastLogin.Value;
+        }
 
         var accessToken = _tokenService.GenerateAccessToken(user);
 
@@ -108,5 +121,11 @@ public class LoginWithGoogleCommandHandler : IRequestHandler<LoginWithGoogleComm
         }
 
         return candidate;
+    }
+
+    private static string BuildDisplayName(string? firstName, string? lastName, string fallback)
+    {
+        var combinedName = $"{firstName} {lastName}".Trim();
+        return string.IsNullOrWhiteSpace(combinedName) ? fallback : combinedName;
     }
 }
