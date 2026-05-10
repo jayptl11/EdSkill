@@ -1,5 +1,6 @@
 using EdSkill.Application.Common.Models;
 using EdSkill.Application.Features.Skills.Commands.CreateSkill;
+using EdSkill.Application.Features.Skills.Commands.DeleteSkill;
 using EdSkill.Application.Features.Skills.Commands.UpdateSkill;
 using EdSkill.Application.Features.Skills.DTOs;
 using EdSkill.Application.Features.Skills.Queries.GetAdminSkills;
@@ -102,6 +103,28 @@ public class AdminSkillsController : ControllerBase
 
         var result = await _sender.Send(command, cancellationToken);
         return ToActionResult(result);
+    }
+
+    [HttpDelete("{skillId:guid}")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> DeleteSkill(Guid skillId, CancellationToken cancellationToken)
+    {
+        var command = new DeleteSkillCommand(skillId);
+        var result = await _sender.Send(command, cancellationToken);
+        
+        if (result.IsSuccess)
+        {
+            return Ok();
+        }
+
+        return result.ErrorCode switch
+        {
+            "SKILL_NOT_FOUND" => NotFound(new { result.ErrorCode, result.ErrorMessage }),
+            _ => BadRequest(new { result.ErrorCode, result.ErrorMessage })
+        };
     }
 
     private IActionResult ToActionResult<T>(Result<T> result)
