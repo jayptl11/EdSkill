@@ -35,7 +35,7 @@ public class ProfileController : ControllerBase
     }
 
     [Authorize]
-    [HttpPatch("me")]
+    [HttpPut("me")]
     [ProducesResponseType(typeof(ProfileDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
