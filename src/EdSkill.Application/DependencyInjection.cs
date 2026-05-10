@@ -17,6 +17,8 @@ public static class DependencyInjection
         services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(assembly));
         services.AddValidatorsFromAssembly(assembly);
         services.AddScoped<IPolicyConsentService, PolicyConsentService>();
+        services.AddScoped<ISystemConfigService, SystemConfigService>();
+        services.AddScoped<IPointLedgerService, PointLedgerService>();
 
         // Add validation behavior
         services.AddScoped(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));

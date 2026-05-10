@@ -1,5 +1,6 @@
 using System.Text.Json;
 using EdSkill.Application.Common.Interfaces;
+using EdSkill.Application.Common.System;
 using EdSkill.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
@@ -9,12 +10,21 @@ namespace EdSkill.Infrastructure.Persistence
 {
     public class AppDbContext : DbContext, IApplicationDbContext
     {
+        private static readonly DateTime ConfigSeedTimestamp = new(2026, 5, 10, 0, 0, 0, DateTimeKind.Utc);
+        private static readonly DateTime LedgerSeedTimestamp = new(2026, 5, 10, 0, 0, 0, DateTimeKind.Utc);
+        private static readonly Guid PlatformLedgerId = Guid.Parse("90000000-0000-0000-0000-000000000001");
+
         public AppDbContext(DbContextOptions<AppDbContext> options) : base(options)
         {
         }
 
         public DbSet<User> Users => Set<User>();
         public DbSet<UserProfile> UserProfiles => Set<UserProfile>();
+        public DbSet<PointWallet> PointWallets => Set<PointWallet>();
+        public DbSet<PointTransaction> PointTransactions => Set<PointTransaction>();
+        public DbSet<Session> Sessions => Set<Session>();
+        public DbSet<SystemConfig> SystemConfigs => Set<SystemConfig>();
+        public DbSet<SystemLedgerAccount> SystemLedgerAccounts => Set<SystemLedgerAccount>();
         public DbSet<PolicyDocument> PolicyDocuments => Set<PolicyDocument>();
         public DbSet<PolicyConsent> PolicyConsents => Set<PolicyConsent>();
         public DbSet<Skill> Skills => Set<Skill>();
@@ -28,6 +38,11 @@ namespace EdSkill.Infrastructure.Persistence
 
             modelBuilder.Entity<User>().HasKey(e => e.UserId);
             modelBuilder.Entity<UserProfile>().HasKey(e => e.ProfileId);
+            modelBuilder.Entity<PointWallet>().HasKey(e => e.PointWalletId);
+            modelBuilder.Entity<PointTransaction>().HasKey(e => e.PointTransactionId);
+            modelBuilder.Entity<Session>().HasKey(e => e.SessionId);
+            modelBuilder.Entity<SystemConfig>().HasKey(e => e.Key);
+            modelBuilder.Entity<SystemLedgerAccount>().HasKey(e => e.SystemLedgerAccountId);
             modelBuilder.Entity<PolicyDocument>().HasKey(e => e.PolicyDocumentId);
             modelBuilder.Entity<PolicyConsent>().HasKey(e => e.PolicyConsentId);
             modelBuilder.Entity<Skill>().HasKey(e => e.SkillId);
@@ -89,6 +104,11 @@ namespace EdSkill.Infrastructure.Persistence
                     .HasForeignKey<UserProfile>(p => p.UserId)
                     .OnDelete(DeleteBehavior.Cascade);
 
+                entity.HasOne(u => u.PointWallet)
+                    .WithOne(wallet => wallet.User)
+                    .HasForeignKey<PointWallet>(wallet => wallet.UserId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
                 entity.HasMany(u => u.UserSkills)
                     .WithOne(us => us.User)
                     .HasForeignKey(us => us.UserId)
@@ -98,6 +118,26 @@ namespace EdSkill.Infrastructure.Persistence
                     .WithOne(consent => consent.User)
                     .HasForeignKey(consent => consent.UserId)
                     .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasMany(u => u.PointTransactions)
+                    .WithOne(transaction => transaction.User)
+                    .HasForeignKey(transaction => transaction.UserId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasMany(u => u.CompanionSessions)
+                    .WithOne(session => session.Companion)
+                    .HasForeignKey(session => session.CompanionId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasMany(u => u.LearnerSessions)
+                    .WithOne(session => session.Learner)
+                    .HasForeignKey(session => session.LearnerId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasMany(u => u.UpdatedSystemConfigs)
+                    .WithOne(config => config.UpdatedByUser)
+                    .HasForeignKey(config => config.UpdatedBy)
+                    .OnDelete(DeleteBehavior.Restrict);
             });
 
             modelBuilder.Entity<UserProfile>(entity =>
@@ -140,6 +180,83 @@ namespace EdSkill.Infrastructure.Persistence
                     .HasColumnType("nvarchar(max)")
                     .HasDefaultValueSql("N'[]'")
                     .Metadata.SetValueComparer(stringListComparer);
+            });
+
+            modelBuilder.Entity<PointWallet>(entity =>
+            {
+                entity.HasIndex(wallet => wallet.UserId).IsUnique();
+                entity.Property(wallet => wallet.Balance).HasDefaultValue(0);
+                entity.Property(wallet => wallet.HeldBalance).HasDefaultValue(0);
+                entity.Property(wallet => wallet.TotalEarned).HasDefaultValue(0);
+                entity.Property(wallet => wallet.TotalSpent).HasDefaultValue(0);
+                entity.Property(wallet => wallet.CreatedAt).HasDefaultValueSql("GETUTCDATE()");
+                entity.Property(wallet => wallet.UpdatedAt).HasDefaultValueSql("GETUTCDATE()");
+            });
+
+            modelBuilder.Entity<SystemLedgerAccount>(entity =>
+            {
+                entity.HasIndex(account => account.Code).IsUnique();
+                entity.Property(account => account.Code).HasMaxLength(64).IsRequired();
+                entity.Property(account => account.Name).HasMaxLength(200).IsRequired();
+                entity.Property(account => account.Balance).HasDefaultValue(0);
+                entity.Property(account => account.CreatedAt).HasDefaultValueSql("GETUTCDATE()");
+                entity.Property(account => account.UpdatedAt).HasDefaultValueSql("GETUTCDATE()");
+
+                entity.HasData(new SystemLedgerAccount
+                {
+                    SystemLedgerAccountId = PlatformLedgerId,
+                    Code = SystemLedgerAccountCodes.PlatformFee,
+                    Name = "Platform Fee Ledger",
+                    Balance = 0,
+                    CreatedAt = LedgerSeedTimestamp,
+                    UpdatedAt = LedgerSeedTimestamp
+                });
+            });
+
+            modelBuilder.Entity<SystemConfig>(entity =>
+            {
+                entity.Property(config => config.Key).HasMaxLength(128);
+                entity.Property(config => config.Value).HasMaxLength(256).IsRequired();
+                entity.Property(config => config.Description).HasMaxLength(500).IsRequired();
+                entity.Property(config => config.UpdatedAt).HasDefaultValueSql("GETUTCDATE()");
+
+                entity.HasData(SystemConfigCatalog.CreateSeed(null, ConfigSeedTimestamp));
+            });
+
+            modelBuilder.Entity<Session>(entity =>
+            {
+                entity.Property(session => session.Skill).HasMaxLength(100).IsRequired();
+                entity.Property(session => session.Description).HasMaxLength(2000);
+                entity.Property(session => session.Status)
+                    .HasConversion<string>()
+                    .HasMaxLength(32);
+                entity.Property(session => session.JitsiRoomId).HasMaxLength(200);
+                entity.Property(session => session.CancelReason).HasMaxLength(500);
+                entity.Property(session => session.CreatedAt).HasDefaultValueSql("GETUTCDATE()");
+                entity.Property(session => session.UpdatedAt).HasDefaultValueSql("GETUTCDATE()");
+                entity.HasIndex(session => new { session.CompanionId, session.ScheduledAt });
+                entity.HasIndex(session => session.Status);
+            });
+
+            modelBuilder.Entity<PointTransaction>(entity =>
+            {
+                entity.Property(transaction => transaction.Type)
+                    .HasConversion<string>()
+                    .HasMaxLength(32);
+                entity.Property(transaction => transaction.Note).HasMaxLength(500);
+                entity.Property(transaction => transaction.CreatedAt).HasDefaultValueSql("GETUTCDATE()");
+                entity.HasIndex(transaction => new { transaction.UserId, transaction.CreatedAt });
+                entity.HasIndex(transaction => new { transaction.SessionId, transaction.CreatedAt });
+
+                entity.HasOne(transaction => transaction.SystemLedgerAccount)
+                    .WithMany()
+                    .HasForeignKey(transaction => transaction.SystemLedgerAccountId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(transaction => transaction.Session)
+                    .WithMany()
+                    .HasForeignKey(transaction => transaction.SessionId)
+                    .OnDelete(DeleteBehavior.Restrict);
             });
 
             modelBuilder.Entity<PolicyDocument>(entity =>

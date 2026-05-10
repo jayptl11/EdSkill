@@ -144,7 +144,7 @@ EdSkill thu thập dữ liệu cần thiết để vận hành đăng ký, hồ 
 
 ## Phân bổ khi hủy muộn
 
-- Tỷ lệ mặc định của nền tảng là Companion nhận 70% và EdSkill ghi nhận 30% khi hủy muộn thuộc trường hợp áp dụng.
+- Tỷ lệ mặc định của nền tảng là Companion nhận 80% và EdSkill ghi nhận 20% khi hủy muộn thuộc trường hợp áp dụng.
 - Cách xử lý cuối cùng vẫn phụ thuộc trạng thái phiên, log tham gia và quy trình dispute của hệ thống.
 
 ## No-show và tranh chấp

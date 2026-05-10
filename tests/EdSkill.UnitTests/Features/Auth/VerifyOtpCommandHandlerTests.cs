@@ -21,6 +21,8 @@ public class VerifyOtpCommandHandlerTests
     private readonly Mock<IOTPCacheService> _otpCacheServiceMock;
     private readonly Mock<ITokenService> _tokenServiceMock;
     private readonly Mock<IPolicyConsentService> _policyConsentServiceMock;
+    private readonly Mock<ISystemConfigService> _systemConfigServiceMock;
+    private readonly Mock<IPointLedgerService> _pointLedgerServiceMock;
     private readonly VerifyOtpCommandHandler _handler;
 
     public VerifyOtpCommandHandlerTests()
@@ -29,12 +31,16 @@ public class VerifyOtpCommandHandlerTests
         _otpCacheServiceMock = new Mock<IOTPCacheService>();
         _tokenServiceMock = new Mock<ITokenService>();
         _policyConsentServiceMock = new Mock<IPolicyConsentService>();
+        _systemConfigServiceMock = new Mock<ISystemConfigService>();
+        _pointLedgerServiceMock = new Mock<IPointLedgerService>();
         _tokenServiceMock.Setup(x => x.HashRefreshToken(It.IsAny<string>())).Returns((string s) => s);
         _handler = new VerifyOtpCommandHandler(
             _contextMock.Object,
             _otpCacheServiceMock.Object,
             _tokenServiceMock.Object,
-            _policyConsentServiceMock.Object);
+            _policyConsentServiceMock.Object,
+            _systemConfigServiceMock.Object,
+            _pointLedgerServiceMock.Object);
     }
 
     [Fact]
@@ -86,6 +92,18 @@ public class VerifyOtpCommandHandlerTests
                     new PolicyConsent { PolicyConsentId = Guid.NewGuid(), UserId = userId, PolicyType = PolicyType.PointsTokens, PolicyVersion = "2026-05-10.v1", AcceptedAt = DateTime.UtcNow }
                 ]));
 
+        _systemConfigServiceMock
+            .Setup(service => service.GetIntValueAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(50);
+
+        _pointLedgerServiceMock
+            .Setup(service => service.GetOrCreateWalletAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Guid userId, CancellationToken _) => new PointWallet { PointWalletId = Guid.NewGuid(), UserId = userId });
+
+        _pointLedgerServiceMock
+            .Setup(service => service.ApplySignupBonusAsync(It.IsAny<Guid>(), It.IsAny<int>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Success());
+
         SetupUsersDbSet(users);
         SetupUserProfilesDbSet(profiles);
         SetupPolicyConsentsDbSet(policyConsents);
@@ -100,6 +118,7 @@ public class VerifyOtpCommandHandlerTests
         profiles.Should().HaveCount(1);
         policyConsents.Should().HaveCount(3);
         policyConsents.Should().OnlyContain(consent => consent.UserId == users[0].UserId);
+        _pointLedgerServiceMock.Verify(service => service.ApplySignupBonusAsync(users[0].UserId, 50, It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]

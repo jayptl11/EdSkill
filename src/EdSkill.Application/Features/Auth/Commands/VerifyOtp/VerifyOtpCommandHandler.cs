@@ -1,6 +1,7 @@
 using System.Text.Json;
 using EdSkill.Application.Common.Interfaces;
 using EdSkill.Application.Common.Models;
+using EdSkill.Application.Common.System;
 using EdSkill.Application.Features.Auth.DTOs;
 using EdSkill.Domain.Entities;
 using EdSkill.Domain.Enums;
@@ -16,17 +17,23 @@ public class VerifyOtpCommandHandler : IRequestHandler<VerifyOtpCommand, Result<
     private readonly IOTPCacheService _otpCacheService;
     private readonly ITokenService _tokenService;
     private readonly IPolicyConsentService _policyConsentService;
+    private readonly ISystemConfigService _systemConfigService;
+    private readonly IPointLedgerService _pointLedgerService;
 
     public VerifyOtpCommandHandler(
         IApplicationDbContext context,
         IOTPCacheService otpCacheService,
         ITokenService tokenService,
-        IPolicyConsentService policyConsentService)
+        IPolicyConsentService policyConsentService,
+        ISystemConfigService systemConfigService,
+        IPointLedgerService pointLedgerService)
     {
         _context = context;
         _otpCacheService = otpCacheService;
         _tokenService = tokenService;
         _policyConsentService = policyConsentService;
+        _systemConfigService = systemConfigService;
+        _pointLedgerService = pointLedgerService;
     }
 
     public async Task<Result<VerifyOtpResponse>> Handle(VerifyOtpCommand request, CancellationToken cancellationToken)
@@ -137,6 +144,26 @@ public class VerifyOtpCommandHandler : IRequestHandler<VerifyOtpCommand, Result<
         }
 
         _context.PolicyConsents.AddRange(policyConsentsResult.Value!);
+
+        await _pointLedgerService.GetOrCreateWalletAsync(user.UserId, cancellationToken);
+
+        var signupBonus = await _systemConfigService.GetIntValueAsync(SystemConfigKeys.PointSignupBonus, cancellationToken);
+        if (signupBonus > 0)
+        {
+            var signupBonusResult = await _pointLedgerService.ApplySignupBonusAsync(
+                user.UserId,
+                signupBonus,
+                "Initial signup bonus",
+                cancellationToken);
+
+            if (!signupBonusResult.IsSuccess)
+            {
+                return Result<VerifyOtpResponse>.Failure(
+                    signupBonusResult.ErrorCode!,
+                    signupBonusResult.ErrorMessage!);
+            }
+        }
+
         await _context.SaveChangesAsync(cancellationToken);
 
         return Result<VerifyOtpResponse>.Success(new VerifyOtpResponse(
