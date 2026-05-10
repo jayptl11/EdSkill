@@ -20,6 +20,8 @@ public class GetUserProfileQueryHandler : IRequestHandler<GetUserProfileQuery, R
         var user = await _context.Users
             .AsNoTracking()
             .Include(u => u.UserProfile)
+            .Include(u => u.UserSkills)
+            .ThenInclude(us => us.Skill)
             .FirstOrDefaultAsync(u => u.UserId == request.UserId, cancellationToken);
 
         if (user?.UserProfile == null)

@@ -1,5 +1,6 @@
 using EdSkill.Application.Common.Interfaces;
 using EdSkill.Domain.Entities;
+using EdSkill.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
@@ -15,6 +16,8 @@ namespace EdSkill.Infrastructure.Persistence
 
         public DbSet<User> Users => Set<User>();
         public DbSet<UserProfile> UserProfiles => Set<UserProfile>();
+        public DbSet<Skill> Skills => Set<Skill>();
+        public DbSet<UserSkill> UserSkills => Set<UserSkill>();
         public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
         public DbSet<TokenBlacklist> TokenBlacklist => Set<TokenBlacklist>();
 
@@ -24,6 +27,8 @@ namespace EdSkill.Infrastructure.Persistence
 
             modelBuilder.Entity<User>().HasKey(e => e.UserId);
             modelBuilder.Entity<UserProfile>().HasKey(e => e.ProfileId);
+            modelBuilder.Entity<Skill>().HasKey(e => e.SkillId);
+            modelBuilder.Entity<UserSkill>().HasKey(e => e.UserSkillId);
             modelBuilder.Entity<RefreshToken>().HasKey(e => e.TokenId);
             modelBuilder.Entity<TokenBlacklist>().HasKey(e => e.Id);
 
@@ -80,6 +85,11 @@ namespace EdSkill.Infrastructure.Persistence
                       .WithOne(p => p.User)
                       .HasForeignKey<UserProfile>(p => p.UserId)
                       .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasMany(u => u.UserSkills)
+                      .WithOne(us => us.User)
+                      .HasForeignKey(us => us.UserId)
+                      .OnDelete(DeleteBehavior.Cascade);
             });
 
             modelBuilder.Entity<UserProfile>(entity =>
@@ -122,6 +132,46 @@ namespace EdSkill.Infrastructure.Persistence
                     .HasColumnType("nvarchar(max)")
                     .HasDefaultValueSql("N'[]'")
                     .Metadata.SetValueComparer(stringListComparer);
+            });
+
+            modelBuilder.Entity<Skill>(entity =>
+            {
+                entity.HasIndex(s => s.Name).IsUnique();
+                entity.HasIndex(s => s.Slug).IsUnique();
+                entity.Property(s => s.Name)
+                    .HasMaxLength(50)
+                    .IsRequired();
+                entity.Property(s => s.Slug)
+                    .HasMaxLength(100)
+                    .IsRequired();
+                entity.Property(s => s.Category)
+                    .HasMaxLength(100);
+                entity.Property(s => s.Aliases)
+                    .HasConversion(stringListConverter)
+                    .HasColumnType("nvarchar(max)")
+                    .HasDefaultValueSql("N'[]'")
+                    .Metadata.SetValueComparer(stringListComparer);
+                entity.Property(s => s.IsActive)
+                    .HasDefaultValue(true);
+                entity.Property(s => s.CreatedAt)
+                    .HasDefaultValueSql("GETUTCDATE()");
+                entity.Property(s => s.UpdatedAt)
+                    .HasDefaultValueSql("GETUTCDATE()");
+            });
+
+            modelBuilder.Entity<UserSkill>(entity =>
+            {
+                entity.HasIndex(us => new { us.UserId, us.SkillId, us.Type }).IsUnique();
+                entity.Property(us => us.Type)
+                    .HasConversion<string>()
+                    .HasMaxLength(16);
+                entity.Property(us => us.CreatedAt)
+                    .HasDefaultValueSql("GETUTCDATE()");
+
+                entity.HasOne(us => us.Skill)
+                    .WithMany(s => s.UserSkills)
+                    .HasForeignKey(us => us.SkillId)
+                    .OnDelete(DeleteBehavior.Restrict);
             });
         }
     }

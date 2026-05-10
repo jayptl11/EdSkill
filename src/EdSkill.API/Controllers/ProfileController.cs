@@ -97,6 +97,8 @@ public class ProfileController : ControllerBase
         {
             "PROFILE_NOT_FOUND" => NotFound(new { result.ErrorCode, result.ErrorMessage }),
             "PROFILE_PRIVATE" => StatusCode(StatusCodes.Status403Forbidden, new { result.ErrorCode, result.ErrorMessage }),
+            "SKILL_NOT_FOUND" => NotFound(new { result.ErrorCode, result.ErrorMessage }),
+            "SKILL_INACTIVE" or "DUPLICATE_SKILL_SELECTION" => BadRequest(new { result.ErrorCode, result.ErrorMessage }),
             _ => BadRequest(new { result.ErrorCode, result.ErrorMessage })
         };
     }

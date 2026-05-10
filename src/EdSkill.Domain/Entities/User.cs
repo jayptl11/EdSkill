@@ -16,6 +16,7 @@ namespace EdSkill.Domain.Entities
         public string? Status { get; set; } = "active";
         public List<string> Roles { get; set; } = new() { "learner" };
         public virtual UserProfile? UserProfile { get; set; }
+        public virtual ICollection<UserSkill> UserSkills { get; set; } = new List<UserSkill>();
         public virtual ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
         public decimal TokenBalance { get; set; } = 0m;
     }

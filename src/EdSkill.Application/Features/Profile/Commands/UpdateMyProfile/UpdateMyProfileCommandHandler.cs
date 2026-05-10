@@ -1,6 +1,9 @@
 using EdSkill.Application.Common.Interfaces;
 using EdSkill.Application.Common.Models;
 using EdSkill.Application.Features.Profile.DTOs;
+using EdSkill.Application.Features.Skills;
+using EdSkill.Domain.Entities;
+using EdSkill.Domain.Enums;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -25,6 +28,8 @@ public class UpdateMyProfileCommandHandler : IRequestHandler<UpdateMyProfileComm
 
         var user = await _context.Users
             .Include(u => u.UserProfile)
+            .Include(u => u.UserSkills)
+            .ThenInclude(us => us.Skill)
             .FirstOrDefaultAsync(u => u.UserId == currentUserId, cancellationToken);
 
         if (user?.UserProfile == null)
@@ -33,6 +38,7 @@ public class UpdateMyProfileCommandHandler : IRequestHandler<UpdateMyProfileComm
         }
 
         var profile = user.UserProfile;
+        List<Skill>? activeSkills = null;
 
         if (request.HasDisplayName)
         {
@@ -61,12 +67,32 @@ public class UpdateMyProfileCommandHandler : IRequestHandler<UpdateMyProfileComm
 
         if (request.HasSkillsToTeach)
         {
-            profile.SkillsToTeach = NormalizeSkills(request.SkillsToTeach);
+            activeSkills ??= await _context.Skills
+                .ToListAsync(cancellationToken);
+
+            var teachSkillsResult = ResolveSkills(request.SkillsToTeach, activeSkills);
+            if (teachSkillsResult.IsFailure)
+            {
+                return Result<ProfileDto>.Failure(teachSkillsResult.ErrorCode!, teachSkillsResult.ErrorMessage!);
+            }
+
+            ReplaceUserSkills(user, UserSkillType.Teach, teachSkillsResult.Value!);
+            profile.SkillsToTeach = teachSkillsResult.Value!.Select(skill => skill.Name).ToList();
         }
 
         if (request.HasSkillsToLearn)
         {
-            profile.SkillsToLearn = NormalizeSkills(request.SkillsToLearn);
+            activeSkills ??= await _context.Skills
+                .ToListAsync(cancellationToken);
+
+            var learnSkillsResult = ResolveSkills(request.SkillsToLearn, activeSkills);
+            if (learnSkillsResult.IsFailure)
+            {
+                return Result<ProfileDto>.Failure(learnSkillsResult.ErrorCode!, learnSkillsResult.ErrorMessage!);
+            }
+
+            ReplaceUserSkills(user, UserSkillType.Learn, learnSkillsResult.Value!);
+            profile.SkillsToLearn = learnSkillsResult.Value!.Select(skill => skill.Name).ToList();
         }
 
         if (request.HasAvatarUrl)
@@ -91,17 +117,87 @@ public class UpdateMyProfileCommandHandler : IRequestHandler<UpdateMyProfileComm
         return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
     }
 
-    private static List<string> NormalizeSkills(IReadOnlyCollection<string>? skills)
+    private static Result<List<Skill>> ResolveSkills(IReadOnlyCollection<string>? skills, IReadOnlyCollection<Skill> activeSkills)
     {
         if (skills is null || skills.Count == 0)
         {
-            return new List<string>();
+            return Result<List<Skill>>.Success(new List<Skill>());
         }
 
-        return skills
-            .Select(skill => skill.Trim())
-            .Where(skill => !string.IsNullOrWhiteSpace(skill))
-            .Distinct(StringComparer.OrdinalIgnoreCase)
+        var lookup = SkillNormalization.BuildLookup(activeSkills);
+        var resolvedSkills = new List<Skill>();
+        var seenSkillIds = new HashSet<Guid>();
+
+        foreach (var input in skills)
+        {
+            if (string.IsNullOrWhiteSpace(input))
+            {
+                return Result<List<Skill>>.Failure("SKILL_NOT_FOUND", "Skill was not found.");
+            }
+
+            var normalizedInput = SkillNormalization.NormalizeLookup(input);
+            if (!lookup.TryGetValue(normalizedInput, out var resolvedSkill))
+            {
+                return Result<List<Skill>>.Failure("SKILL_NOT_FOUND", "Skill was not found.");
+            }
+
+            if (!resolvedSkill.IsActive)
+            {
+                return Result<List<Skill>>.Failure("SKILL_INACTIVE", "Skill is inactive.");
+            }
+
+            if (!seenSkillIds.Add(resolvedSkill.SkillId))
+            {
+                return Result<List<Skill>>.Failure("DUPLICATE_SKILL_SELECTION", "Duplicate skill selection is not allowed.");
+            }
+
+            resolvedSkills.Add(resolvedSkill);
+        }
+
+        return Result<List<Skill>>.Success(resolvedSkills);
+    }
+
+    private void ReplaceUserSkills(User user, UserSkillType type, IReadOnlyCollection<Skill> skills)
+    {
+        var existingEntries = user.UserSkills
+            .Where(userSkill => userSkill.Type == type)
             .ToList();
+
+        if (existingEntries.Count > 0)
+        {
+            _context.UserSkills.RemoveRange(existingEntries);
+            foreach (var existingEntry in existingEntries)
+            {
+                if (user.UserSkills.Contains(existingEntry))
+                {
+                    user.UserSkills.Remove(existingEntry);
+                }
+            }
+        }
+
+        var newEntries = skills
+            .Select(skill => new UserSkill
+            {
+                UserSkillId = Guid.NewGuid(),
+                UserId = user.UserId,
+                User = user,
+                SkillId = skill.SkillId,
+                Skill = skill,
+                Type = type,
+                CreatedAt = DateTime.UtcNow
+            })
+            .ToList();
+
+        if (newEntries.Count > 0)
+        {
+            _context.UserSkills.AddRange(newEntries);
+            foreach (var newEntry in newEntries)
+            {
+                if (!user.UserSkills.Contains(newEntry))
+                {
+                    user.UserSkills.Add(newEntry);
+                }
+            }
+        }
     }
 }

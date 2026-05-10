@@ -2,6 +2,7 @@
 using System.Linq.Expressions;
 using Moq;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 
 namespace EdSkill.UnitTests.Helpers;
 
@@ -93,6 +94,7 @@ public static class MockDbSetExtensions
     {
         var queryableData = data.AsQueryable();
         var mockDbSet = new Mock<DbSet<T>>();
+        var collection = data as ICollection<T>;
 
         mockDbSet.As<IAsyncEnumerable<T>>()
             .Setup(m => m.GetAsyncEnumerator(It.IsAny<CancellationToken>()))
@@ -113,6 +115,34 @@ public static class MockDbSetExtensions
         mockDbSet.As<IQueryable<T>>()
             .Setup(m => m.GetEnumerator())
             .Returns(queryableData.GetEnumerator());
+
+        if (collection is not null)
+        {
+            mockDbSet.Setup(m => m.Add(It.IsAny<T>()))
+                .Callback<T>(collection.Add);
+
+            mockDbSet.Setup(m => m.AddAsync(It.IsAny<T>(), It.IsAny<CancellationToken>()))
+                .Callback<T, CancellationToken>((entity, _) => collection.Add(entity))
+                .Returns(new ValueTask<EntityEntry<T>>((EntityEntry<T>)null!));
+
+            mockDbSet.Setup(m => m.AddRange(It.IsAny<IEnumerable<T>>()))
+                .Callback<IEnumerable<T>>(entities =>
+                {
+                    foreach (var entity in entities)
+                    {
+                        collection.Add(entity);
+                    }
+                });
+
+            mockDbSet.Setup(m => m.RemoveRange(It.IsAny<IEnumerable<T>>()))
+                .Callback<IEnumerable<T>>(entities =>
+                {
+                    foreach (var entity in entities.ToList())
+                    {
+                        collection.Remove(entity);
+                    }
+                });
+        }
 
         return mockDbSet;
     }
