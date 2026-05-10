@@ -31,7 +31,7 @@ public class UpdateMyProfileCommandHandlerTests
             Name = "Speaking",
             Slug = "speaking",
             Category = "Communication",
-            Aliases = new List<string> { "Tiếng Anh" },
+            Aliases = new List<string> { "Tieng Anh" },
             IsActive = true
         };
         var aspNetSkill = new Skill
@@ -84,10 +84,10 @@ public class UpdateMyProfileCommandHandlerTests
         var command = new UpdateMyProfileCommand(
             true, "  New Name  ",
             true, "  Hello world  ",
-            true, "  FPT  ",
-            true, "  SE  ",
-            true, 4,
-            true, new[] { " tiếng anh ", "ASP.NET" },
+            true, new DateTime(2000, 1, 2),
+            true, "  +84 912 345 678  ",
+            true, "  https://cdn.edskill.test/degree/u/degree.pdf  ",
+            true, new[] { " tieng anh ", "ASP.NET" },
             true, new[] { "React" },
             true, "  https://cdn.edskill.test/avatar/u/a.jpg  ",
             true, false);
@@ -97,9 +97,9 @@ public class UpdateMyProfileCommandHandlerTests
         result.IsSuccess.Should().BeTrue();
         user.UserProfile!.DisplayName.Should().Be("New Name");
         user.UserProfile.Bio.Should().Be("Hello world");
-        user.UserProfile.University.Should().Be("FPT");
-        user.UserProfile.Faculty.Should().Be("SE");
-        user.UserProfile.YearOfStudy.Should().Be(4);
+        user.UserProfile.DateOfBirth.Should().Be(new DateTime(2000, 1, 2));
+        user.UserProfile.Phone.Should().Be("+84 912 345 678");
+        user.UserProfile.DegreeUrl.Should().Be("https://cdn.edskill.test/degree/u/degree.pdf");
         user.UserProfile.SkillsToTeach.Should().BeEquivalentTo("Speaking", "ASP.NET");
         user.UserProfile.SkillsToLearn.Should().BeEquivalentTo("React");
         user.UserProfile.AvatarUrl.Should().Be("https://cdn.edskill.test/avatar/u/a.jpg");
@@ -199,7 +199,7 @@ public class UpdateMyProfileCommandHandlerTests
             SkillId = Guid.NewGuid(),
             Name = "Speaking",
             Slug = "speaking",
-            Aliases = new List<string> { "Tiếng Anh" },
+            Aliases = new List<string> { "Tieng Anh" },
             IsActive = true
         };
         var skills = new List<Skill> { speakingSkill };
@@ -227,7 +227,7 @@ public class UpdateMyProfileCommandHandlerTests
             false, null,
             false, null,
             false, null,
-            true, new[] { "Speaking", "Tiếng Anh" },
+            true, new[] { "Speaking", "Tieng Anh" },
             false, null,
             false, null,
             false, null);

@@ -12,9 +12,6 @@ namespace EdSkill.Domain.Entities
         public string DisplayName { get; set; } = string.Empty;
         public string? Bio { get; set; }
         public string? AvatarUrl { get; set; }
-        public string? University { get; set; }
-        public string? Faculty { get; set; }
-        public int? YearOfStudy { get; set; }
         public List<string> SkillsToTeach { get; set; } = new();
         public List<string> SkillsToLearn { get; set; } = new();
         public bool IsPublic { get; set; } = true;
@@ -26,6 +23,7 @@ namespace EdSkill.Domain.Entities
 
         public DateTime? DateOfBirth { get; set; }
         public string? Phone { get; set; }
+        public string? DegreeUrl { get; set; }
         public string? Address { get; set; }
     }
 }

@@ -60,7 +60,7 @@ public class GetUserProfileQueryHandlerTests
     }
 
     [Fact]
-    public async Task Handle_WhenProfileIsPublic_ReturnsCanonicalSkillNames()
+    public async Task Handle_WhenProfileIsPublic_HidesPrivateFields()
     {
         var userId = Guid.NewGuid();
         var user = new User
@@ -79,10 +79,10 @@ public class GetUserProfileQueryHandlerTests
                         SkillId = Guid.NewGuid(),
                         Name = "Speaking",
                         Slug = "speaking",
-                        IsActive = false
+                        IsActive = true
                     },
                     Type = UserSkillType.Teach
-                },
+                }
             },
             UserProfile = new UserProfile
             {
@@ -91,9 +91,9 @@ public class GetUserProfileQueryHandlerTests
                 DisplayName = "Public User",
                 AvatarUrl = "https://cdn.edskill.test/u/avatar.png",
                 Bio = "I teach speaking",
-                University = "FPT University",
-                Faculty = "Software Engineering",
-                YearOfStudy = 4,
+                DateOfBirth = new DateTime(2000, 1, 2),
+                Phone = "+84912345678",
+                DegreeUrl = "https://cdn.edskill.test/degree/u/degree.pdf",
                 IsPublic = true
             }
         };
@@ -107,5 +107,8 @@ public class GetUserProfileQueryHandlerTests
         result.Value.SkillsToLearn.Should().BeEmpty();
         result.Value.IsCompanionOnboardingComplete.Should().BeTrue();
         result.Value.MissingCompanionProfileFields.Should().BeEmpty();
+        result.Value.DateOfBirth.Should().BeNull();
+        result.Value.Phone.Should().BeNull();
+        result.Value.DegreeUrl.Should().BeNull();
     }
 }

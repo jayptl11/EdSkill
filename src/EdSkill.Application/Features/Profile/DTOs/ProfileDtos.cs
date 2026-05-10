@@ -5,9 +5,9 @@ public record ProfileDto(
     string DisplayName,
     string? AvatarUrl,
     string? Bio,
-    string? University,
-    string? Faculty,
-    int? YearOfStudy,
+    DateTime? DateOfBirth,
+    string? Phone,
+    string? DegreeUrl,
     IReadOnlyCollection<string> SkillsToTeach,
     IReadOnlyCollection<string> SkillsToLearn,
     bool IsPublic,
@@ -25,7 +25,20 @@ public record AvatarUploadUrlDto(
     DateTime ExpiresAt
 );
 
+public record DegreeUploadUrlDto(
+    string UploadUrl,
+    string PublicUrl,
+    string ObjectKey,
+    DateTime ExpiresAt
+);
+
 public record GenerateAvatarUploadUrlRequest(
+    string FileName,
+    string ContentType,
+    long FileSize
+);
+
+public record GenerateDegreeUploadUrlRequest(
     string FileName,
     string ContentType,
     long FileSize
@@ -35,9 +48,9 @@ public sealed class UpdateMyProfileRequest
 {
     private string? _displayName;
     private string? _bio;
-    private string? _university;
-    private string? _faculty;
-    private int? _yearOfStudy;
+    private DateTime? _dateOfBirth;
+    private string? _phone;
+    private string? _degreeUrl;
     private IReadOnlyCollection<string>? _skillsToTeach;
     private IReadOnlyCollection<string>? _skillsToLearn;
     private string? _avatarUrl;
@@ -45,9 +58,9 @@ public sealed class UpdateMyProfileRequest
 
     public bool HasDisplayName { get; private set; }
     public bool HasBio { get; private set; }
-    public bool HasUniversity { get; private set; }
-    public bool HasFaculty { get; private set; }
-    public bool HasYearOfStudy { get; private set; }
+    public bool HasDateOfBirth { get; private set; }
+    public bool HasPhone { get; private set; }
+    public bool HasDegreeUrl { get; private set; }
     public bool HasSkillsToTeach { get; private set; }
     public bool HasSkillsToLearn { get; private set; }
     public bool HasAvatarUrl { get; private set; }
@@ -73,33 +86,33 @@ public sealed class UpdateMyProfileRequest
         }
     }
 
-    public string? University
+    public DateTime? DateOfBirth
     {
-        get => _university;
+        get => _dateOfBirth;
         set
         {
-            HasUniversity = true;
-            _university = value;
+            HasDateOfBirth = true;
+            _dateOfBirth = value;
         }
     }
 
-    public string? Faculty
+    public string? Phone
     {
-        get => _faculty;
+        get => _phone;
         set
         {
-            HasFaculty = true;
-            _faculty = value;
+            HasPhone = true;
+            _phone = value;
         }
     }
 
-    public int? YearOfStudy
+    public string? DegreeUrl
     {
-        get => _yearOfStudy;
+        get => _degreeUrl;
         set
         {
-            HasYearOfStudy = true;
-            _yearOfStudy = value;
+            HasDegreeUrl = true;
+            _degreeUrl = value;
         }
     }
 

@@ -23,19 +23,14 @@ internal static class CompanionOnboardingRules
             missingFields.Add("bio");
         }
 
-        if (string.IsNullOrWhiteSpace(profile.University))
+        if (!profile.DateOfBirth.HasValue)
         {
-            missingFields.Add("university");
+            missingFields.Add("dateOfBirth");
         }
 
-        if (string.IsNullOrWhiteSpace(profile.Faculty))
+        if (string.IsNullOrWhiteSpace(profile.Phone))
         {
-            missingFields.Add("faculty");
-        }
-
-        if (!profile.YearOfStudy.HasValue)
-        {
-            missingFields.Add("yearOfStudy");
+            missingFields.Add("phone");
         }
 
         if (profile.SkillsToTeach is not { Count: > 0 })

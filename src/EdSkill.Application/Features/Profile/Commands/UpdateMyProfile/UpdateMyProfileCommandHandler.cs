@@ -50,19 +50,19 @@ public class UpdateMyProfileCommandHandler : IRequestHandler<UpdateMyProfileComm
             profile.Bio = NormalizeOptionalString(request.Bio);
         }
 
-        if (request.HasUniversity)
+        if (request.HasDateOfBirth)
         {
-            profile.University = NormalizeOptionalString(request.University);
+            profile.DateOfBirth = request.DateOfBirth?.Date;
         }
 
-        if (request.HasFaculty)
+        if (request.HasPhone)
         {
-            profile.Faculty = NormalizeOptionalString(request.Faculty);
+            profile.Phone = NormalizeOptionalString(request.Phone);
         }
 
-        if (request.HasYearOfStudy)
+        if (request.HasDegreeUrl)
         {
-            profile.YearOfStudy = request.YearOfStudy;
+            profile.DegreeUrl = NormalizeOptionalString(request.DegreeUrl);
         }
 
         if (request.HasSkillsToTeach)

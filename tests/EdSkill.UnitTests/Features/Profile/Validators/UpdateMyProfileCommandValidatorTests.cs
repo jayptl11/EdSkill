@@ -40,6 +40,26 @@ public class UpdateMyProfileCommandValidatorTests
     }
 
     [Fact]
+    public void Validate_WhenPhoneFormatInvalid_ShouldHaveError()
+    {
+        var command = new UpdateMyProfileCommand(
+            false, null,
+            false, null,
+            false, null,
+            true, "abc",
+            false, null,
+            false, null,
+            false, null,
+            false, null,
+            false, null);
+
+        var result = _validator.TestValidate(command);
+
+        result.ShouldHaveValidationErrorFor(x => x.Phone)
+            .WithErrorCode("INVALID_PHONE");
+    }
+
+    [Fact]
     public void Validate_WhenSkillsContainDuplicateValues_ShouldHaveError()
     {
         var command = new UpdateMyProfileCommand(
@@ -76,5 +96,24 @@ public class UpdateMyProfileCommandValidatorTests
         var result = _validator.TestValidate(command);
 
         result.ShouldNotHaveValidationErrorFor(x => x.AvatarUrl);
+    }
+
+    [Fact]
+    public void Validate_WhenDegreeUrlUsesConfiguredBase_ShouldNotHaveError()
+    {
+        var command = new UpdateMyProfileCommand(
+            false, null,
+            false, null,
+            false, null,
+            false, null,
+            true, "https://cdn.edskill.test/degree/123/file.pdf",
+            false, null,
+            false, null,
+            false, null,
+            false, null);
+
+        var result = _validator.TestValidate(command);
+
+        result.ShouldNotHaveValidationErrorFor(x => x.DegreeUrl);
     }
 }

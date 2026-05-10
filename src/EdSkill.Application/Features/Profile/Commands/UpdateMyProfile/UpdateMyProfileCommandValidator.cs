@@ -36,28 +36,23 @@ public partial class UpdateMyProfileCommandValidator : AbstractValidator<UpdateM
                 .WithErrorCode("INVALID_BIO");
         });
 
-        When(x => x.HasUniversity && x.University is not null, () =>
+        When(x => x.HasDateOfBirth, () =>
         {
-            RuleFor(x => x.University!)
-                .MaximumLength(200)
-                .WithMessage("University must not exceed 200 characters")
-                .WithErrorCode("INVALID_UNIVERSITY");
+            RuleFor(x => x.DateOfBirth)
+                .Must(value => value is null || (value.Value.Date >= new DateTime(1900, 1, 1) && value.Value.Date <= DateTime.UtcNow.Date))
+                .WithMessage("Date of birth is invalid")
+                .WithErrorCode("INVALID_DATE_OF_BIRTH");
         });
 
-        When(x => x.HasFaculty && x.Faculty is not null, () =>
+        When(x => x.HasPhone && x.Phone is not null, () =>
         {
-            RuleFor(x => x.Faculty!)
-                .MaximumLength(200)
-                .WithMessage("Faculty must not exceed 200 characters")
-                .WithErrorCode("INVALID_FACULTY");
-        });
-
-        When(x => x.HasYearOfStudy, () =>
-        {
-            RuleFor(x => x.YearOfStudy)
-                .Must(year => year is null || (year >= 1 && year <= 6))
-                .WithMessage("Year of study must be between 1 and 6")
-                .WithErrorCode("INVALID_YEAR_OF_STUDY");
+            RuleFor(x => x.Phone!)
+                .Must(phone => phone.Trim().Length is >= 8 and <= 20)
+                .WithMessage("Phone number length is invalid")
+                .WithErrorCode("INVALID_PHONE")
+                .Must(phone => PhoneRegex().IsMatch(phone.Trim()))
+                .WithMessage("Phone number format is invalid")
+                .WithErrorCode("INVALID_PHONE");
         });
 
         When(x => x.HasSkillsToTeach, () =>
@@ -82,6 +77,14 @@ public partial class UpdateMyProfileCommandValidator : AbstractValidator<UpdateM
                 .Must(url => string.IsNullOrWhiteSpace(url) || objectStorageService.IsPublicUrl(url))
                 .WithMessage("Avatar URL is invalid")
                 .WithErrorCode("INVALID_AVATAR_URL");
+        });
+
+        When(x => x.HasDegreeUrl, () =>
+        {
+            RuleFor(x => x.DegreeUrl)
+                .Must(url => string.IsNullOrWhiteSpace(url) || objectStorageService.IsPublicUrl(url))
+                .WithMessage("Degree URL is invalid")
+                .WithErrorCode("INVALID_DEGREE_URL");
         });
 
         When(x => x.HasIsPublic, () =>
@@ -125,4 +128,7 @@ public partial class UpdateMyProfileCommandValidator : AbstractValidator<UpdateM
 
     [GeneratedRegex(@"^[\p{L}\p{N} ]+$", RegexOptions.Compiled)]
     private static partial Regex DisplayNameRegex();
+
+    [GeneratedRegex(@"^[0-9+\-() ]+$", RegexOptions.Compiled)]
+    private static partial Regex PhoneRegex();
 }

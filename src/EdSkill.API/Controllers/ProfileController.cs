@@ -1,6 +1,7 @@
 using EdSkill.Application.Common.Models;
 using EdSkill.Application.Features.Profile.Commands.EnableCompanion;
 using EdSkill.Application.Features.Profile.Commands.GenerateAvatarUploadUrl;
+using EdSkill.Application.Features.Profile.Commands.GenerateDegreeUploadUrl;
 using EdSkill.Application.Features.Profile.Commands.UpdateMyProfile;
 using EdSkill.Application.Features.Profile.DTOs;
 using EdSkill.Application.Features.Profile.Queries.GetMyProfile;
@@ -46,12 +47,12 @@ public class ProfileController : ControllerBase
             request.DisplayName,
             request.HasBio,
             request.Bio,
-            request.HasUniversity,
-            request.University,
-            request.HasFaculty,
-            request.Faculty,
-            request.HasYearOfStudy,
-            request.YearOfStudy,
+            request.HasDateOfBirth,
+            request.DateOfBirth,
+            request.HasPhone,
+            request.Phone,
+            request.HasDegreeUrl,
+            request.DegreeUrl,
             request.HasSkillsToTeach,
             request.SkillsToTeach,
             request.HasSkillsToLearn,
@@ -61,6 +62,18 @@ public class ProfileController : ControllerBase
             request.HasIsPublic,
             request.IsPublic);
 
+        var result = await _sender.Send(command, cancellationToken);
+        return ToActionResult(result);
+    }
+
+    [Authorize]
+    [HttpPost("me/degree-upload-url")]
+    [ProducesResponseType(typeof(DegreeUploadUrlDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
+    public async Task<IActionResult> GenerateDegreeUploadUrl([FromBody] GenerateDegreeUploadUrlRequest request, CancellationToken cancellationToken)
+    {
+        var command = new GenerateDegreeUploadUrlCommand(request.FileName, request.ContentType, request.FileSize);
         var result = await _sender.Send(command, cancellationToken);
         return ToActionResult(result);
     }

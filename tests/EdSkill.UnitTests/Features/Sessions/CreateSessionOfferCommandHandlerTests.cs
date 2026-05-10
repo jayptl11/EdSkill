@@ -28,9 +28,8 @@ public class CreateSessionOfferCommandHandlerTests
                     UserId = userId,
                     DisplayName = "Teacher",
                     Bio = "I teach speaking",
-                    University = "FPT University",
-                    Faculty = "Software Engineering",
-                    YearOfStudy = 4,
+                    DateOfBirth = new DateTime(2000, 1, 2),
+                    Phone = "+84912345678",
                     SkillsToTeach = new List<string> { "Speaking" },
                     IsPublic = false
                 }
@@ -63,9 +62,8 @@ public class CreateSessionOfferCommandHandlerTests
                     DisplayName = "Teacher",
                     AvatarUrl = "https://cdn.edskill.test/u/avatar.png",
                     Bio = "I teach speaking",
-                    University = "FPT University",
-                    Faculty = "Software Engineering",
-                    YearOfStudy = 4,
+                    DateOfBirth = new DateTime(2000, 1, 2),
+                    Phone = "+84912345678",
                     SkillsToTeach = new List<string> { "Speaking" },
                     IsPublic = true
                 }

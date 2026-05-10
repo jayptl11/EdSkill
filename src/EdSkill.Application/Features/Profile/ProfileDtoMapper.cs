@@ -6,7 +6,7 @@ namespace EdSkill.Application.Features.Profile;
 
 internal static class ProfileDtoMapper
 {
-    public static ProfileDto Map(User user, UserProfile profile)
+    public static ProfileDto Map(User user, UserProfile profile, bool includePrivateDetails = true)
     {
         var skillsToTeach = user.UserSkills
             .Where(userSkill => userSkill.Type == UserSkillType.Teach && userSkill.Skill is not null)
@@ -31,9 +31,9 @@ internal static class ProfileDtoMapper
             profile.DisplayName,
             profile.AvatarUrl,
             profile.Bio,
-            profile.University,
-            profile.Faculty,
-            profile.YearOfStudy,
+            includePrivateDetails ? profile.DateOfBirth : null,
+            includePrivateDetails ? profile.Phone : null,
+            includePrivateDetails ? profile.DegreeUrl : null,
             skillsToTeach.AsReadOnly(),
             skillsToLearn.AsReadOnly(),
             profile.IsPublic,

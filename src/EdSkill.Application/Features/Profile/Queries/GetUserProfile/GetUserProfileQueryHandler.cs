@@ -34,6 +34,6 @@ public class GetUserProfileQueryHandler : IRequestHandler<GetUserProfileQuery, R
             return Result<ProfileDto>.Failure("PROFILE_PRIVATE", "This profile is private.");
         }
 
-        return Result<ProfileDto>.Success(ProfileDtoMapper.Map(user, user.UserProfile));
+        return Result<ProfileDto>.Success(ProfileDtoMapper.Map(user, user.UserProfile, includePrivateDetails: false));
     }
 }

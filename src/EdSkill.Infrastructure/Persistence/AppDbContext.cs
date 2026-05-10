@@ -150,10 +150,8 @@ namespace EdSkill.Infrastructure.Persistence
                     .HasMaxLength(500);
                 entity.Property(p => p.AvatarUrl)
                     .HasMaxLength(2048);
-                entity.Property(p => p.University)
-                    .HasMaxLength(200);
-                entity.Property(p => p.Faculty)
-                    .HasMaxLength(200);
+                entity.Property(p => p.DegreeUrl)
+                    .HasMaxLength(2048);
                 entity.Property(p => p.Phone)
                     .HasMaxLength(50);
                 entity.Property(p => p.Address)
