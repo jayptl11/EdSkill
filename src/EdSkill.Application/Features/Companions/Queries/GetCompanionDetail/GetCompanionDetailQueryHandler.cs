@@ -42,10 +42,15 @@ public class GetCompanionDetailQueryHandler : IRequestHandler<GetCompanionDetail
             return Result<CompanionDetailDto>.Failure("PROFILE_PRIVATE", "This profile is private.");
         }
 
-        var sessions = await CompanionSessionFilters
-            .Apply(_context.Sessions.AsNoTracking().Where(session => session.CompanionId == request.CompanionId), skill.Name, request.DeliveryMode, request.Location)
+        var sessions = (await CompanionSessionFilters
+            .ApplyAsync(
+                _context.Sessions.AsNoTracking().Where(session => session.CompanionId == request.CompanionId),
+                skill,
+                request.DeliveryMode,
+                request.Location,
+                cancellationToken))
             .OrderBy(session => session.ScheduledAt)
-            .ToListAsync(cancellationToken);
+            .ToList();
 
         var reviewBaseQuery =
             from review in _context.Reviews.AsNoTracking()

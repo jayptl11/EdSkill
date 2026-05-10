@@ -28,10 +28,10 @@ public class SearchCompanionsQueryHandler : IRequestHandler<SearchCompanionsQuer
             return Result<CompanionSearchResultDto>.Failure("SKILL_NOT_FOUND", "Skill was not found.");
         }
 
-        var filteredSessions = await CompanionSessionFilters
-            .Apply(_context.Sessions.AsNoTracking(), skill.Name, request.DeliveryMode, request.Location)
+        var filteredSessions = (await CompanionSessionFilters
+            .ApplyAsync(_context.Sessions.AsNoTracking(), skill, request.DeliveryMode, request.Location, cancellationToken))
             .OrderBy(session => session.ScheduledAt)
-            .ToListAsync(cancellationToken);
+            .ToList();
 
         var sessionStats = filteredSessions
             .GroupBy(session => session.CompanionId)

@@ -1,17 +1,20 @@
 using EdSkill.Domain.Entities;
 using EdSkill.Domain.Enums;
+using EdSkill.Application.Features.Skills;
+using Microsoft.EntityFrameworkCore;
 
 namespace EdSkill.Application.Features.Companions;
 
 internal static class CompanionSessionFilters
 {
-    public static IQueryable<Session> Apply(
+    public static async Task<List<Session>> ApplyAsync(
         IQueryable<Session> query,
-        string skillName,
+        Skill skill,
         SessionDeliveryMode? deliveryMode,
-        string? location)
+        string? location,
+        CancellationToken cancellationToken)
     {
-        query = query.Where(session => session.Status == SessionStatus.Available && session.Skill == skillName);
+        query = query.Where(session => session.Status == SessionStatus.Available);
 
         if (deliveryMode.HasValue)
         {
@@ -26,6 +29,30 @@ internal static class CompanionSessionFilters
                 session.Location.ToLower().Contains(normalizedLocation));
         }
 
-        return query;
+        var sessions = await query.ToListAsync(cancellationToken);
+        var validSkillKeys = BuildSkillKeys(skill);
+
+        return sessions
+            .Where(session => validSkillKeys.Contains(SkillNormalization.NormalizeLookup(session.Skill)))
+            .ToList();
+    }
+
+    private static HashSet<string> BuildSkillKeys(Skill skill)
+    {
+        var keys = new HashSet<string>(StringComparer.Ordinal)
+        {
+            SkillNormalization.NormalizeLookup(skill.Name),
+            SkillNormalization.NormalizeLookup(skill.Slug)
+        };
+
+        foreach (var alias in skill.Aliases)
+        {
+            if (!string.IsNullOrWhiteSpace(alias))
+            {
+                keys.Add(SkillNormalization.NormalizeLookup(alias));
+            }
+        }
+
+        return keys;
     }
 }

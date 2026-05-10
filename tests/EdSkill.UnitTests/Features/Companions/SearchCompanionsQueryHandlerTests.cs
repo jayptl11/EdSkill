@@ -25,6 +25,7 @@ public class SearchCompanionsQueryHandlerTests
                 SkillId = skillId,
                 Name = "Speaking",
                 Slug = "speaking",
+                Aliases = new List<string> { "Tiếng Anh" },
                 IsActive = true
             }
         };
@@ -100,7 +101,7 @@ public class SearchCompanionsQueryHandlerTests
             {
                 SessionId = Guid.NewGuid(),
                 CompanionId = companionId,
-                Skill = "Speaking",
+                Skill = "Tiếng Anh",
                 DeliveryMode = SessionDeliveryMode.Offline,
                 Location = "Ho Chi Minh City",
                 DurationMinutes = 60,
