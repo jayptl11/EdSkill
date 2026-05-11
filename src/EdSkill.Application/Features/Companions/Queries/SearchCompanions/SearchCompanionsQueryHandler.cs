@@ -12,14 +12,18 @@ namespace EdSkill.Application.Features.Companions.Queries.SearchCompanions;
 public class SearchCompanionsQueryHandler : IRequestHandler<SearchCompanionsQuery, Result<CompanionSearchResultDto>>
 {
     private readonly IApplicationDbContext _context;
+    private readonly ICurrentUserService _currentUserService;
 
-    public SearchCompanionsQueryHandler(IApplicationDbContext context)
+    public SearchCompanionsQueryHandler(IApplicationDbContext context, ICurrentUserService currentUserService)
     {
         _context = context;
+        _currentUserService = currentUserService;
     }
 
     public async Task<Result<CompanionSearchResultDto>> Handle(SearchCompanionsQuery request, CancellationToken cancellationToken)
     {
+        var currentUserId = _currentUserService.TryGetUserId();
+
         var skill = await _context.Skills
             .AsNoTracking()
             .FirstOrDefaultAsync(item => item.SkillId == request.SkillId && item.IsActive && !item.IsDeleted, cancellationToken);
@@ -61,7 +65,11 @@ public class SearchCompanionsQueryHandler : IRequestHandler<SearchCompanionsQuer
         var reviewStats = await LoadReviewStatsAsync(companionIds, cancellationToken);
 
         var items = companions
-            .Where(user => user.UserProfile?.IsPublic == true && user.Roles.Contains("companion") && sessionStats.ContainsKey(user.UserId))
+            .Where(user =>
+                user.UserProfile?.IsPublic == true
+                && user.Roles.Contains("companion")
+                && sessionStats.ContainsKey(user.UserId)
+                && (!currentUserId.HasValue || user.UserId != currentUserId.Value))
             .Select(user =>
             {
                 var stats = sessionStats[user.UserId];

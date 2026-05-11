@@ -3,4 +3,5 @@
 public interface ICurrentUserService
 {
     Guid GetUserId();
+    Guid? TryGetUserId();
 }

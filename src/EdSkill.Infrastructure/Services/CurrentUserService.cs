@@ -15,12 +15,23 @@ public class CurrentUserService : ICurrentUserService
 
     public Guid GetUserId()
     {
+        var userId = TryGetUserId();
+        if (!userId.HasValue)
+        {
+            throw new UnauthorizedAccessException("User is not authenticated");
+        }
+
+        return userId.Value;
+    }
+
+    public Guid? TryGetUserId()
+    {
         var userIdClaim = _httpContextAccessor.HttpContext?.User
             .FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
         if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
         {
-            throw new UnauthorizedAccessException("User is not authenticated");
+            return null;
         }
 
         return userId;
