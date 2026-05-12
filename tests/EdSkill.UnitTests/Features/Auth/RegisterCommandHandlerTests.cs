@@ -82,9 +82,9 @@ public class RegisterCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_WhenValidRequest_CreatesOtpAndSendsEmail()
+    public async Task Handle_WhenValidRequest_AssignsLearnerAndCompanionRoles()
     {
-        var command = new RegisterCommand("new@test.com", "newuser", "John", "Doe", "Password123", SignupIntents.Teach, AcceptedPolicies);
+        var command = new RegisterCommand("new@test.com", "newuser", "John", "Doe", "Password123", SignupIntents.Learn, AcceptedPolicies);
         SetupUsersDbSet([]);
 
         _policyConsentServiceMock
@@ -102,7 +102,7 @@ public class RegisterCommandHandlerTests
             "new@test.com",
             OtpPurpose.Register,
             It.Is<string>(payload =>
-                payload.Contains("\"SignupIntent\":\"teach\"") &&
+                payload.Contains("\"SignupIntent\":\"learn\"") &&
                 payload.Contains("\"Roles\":[\"learner\",\"companion\"]") &&
                 payload.Contains("\"PolicyType\":\"terms\"") &&
                 payload.Contains("\"PolicyVersion\":\"2026-05-10.v1\"")),

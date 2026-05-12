@@ -21,8 +21,6 @@ public static class SignupIntents
 
     public static IReadOnlyCollection<string> GetRoles(string? signupIntent)
     {
-        return Normalize(signupIntent) == Teach
-            ? ["learner", "companion"]
-            : ["learner"];
+        return ["learner", "companion"];
     }
 }

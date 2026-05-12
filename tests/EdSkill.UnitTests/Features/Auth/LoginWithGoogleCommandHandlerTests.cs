@@ -88,7 +88,7 @@ public class LoginWithGoogleCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_WhenUserDoesNotExist_CreatesTeachUserAndReturnsAccessToken()
+    public async Task Handle_WhenUserDoesNotExist_AssignsLearnerAndCompanionRoles()
     {
         var users = new List<User>();
         SetupUsersDbSet(users);
@@ -109,7 +109,7 @@ public class LoginWithGoogleCommandHandlerTests
 
         _contextMock.Setup(x => x.Users.Add(It.IsAny<User>())).Callback<User>(u => users.Add(u));
 
-        var result = await _handler.Handle(new LoginWithGoogleCommand("ok", SignupIntents.Teach), CancellationToken.None);
+        var result = await _handler.Handle(new LoginWithGoogleCommand("ok", SignupIntents.Learn), CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().NotBeNull();
