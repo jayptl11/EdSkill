@@ -104,7 +104,7 @@ public class CreateSessionOfferCommandHandlerTests
         sessions.Should().HaveCount(1);
         sessions[0].Status.Should().Be(SessionStatus.Available);
         sessions[0].PricingModel.Should().Be(SessionPricingModel.FormulaV1);
-        sessions[0].DurationOptions.Should().BeEquivalentTo(new[] { 45, 60 });
+        sessions[0].DurationOptions.Should().BeEquivalentTo(new[] { 30, 45, 60 });
         sessions[0].DurationMinutes.Should().Be(60);
         result.Value!.PricingPreview.MinLearnerChargePoints.Should().BeGreaterThan(0);
     }

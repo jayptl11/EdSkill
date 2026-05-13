@@ -62,12 +62,28 @@ public class SessionPricingServiceTests
         var result = service.BuildOfferPreview(skill, 1, new[] { 120, 45, 45, 15 }, 25);
 
         result.IsSuccess.Should().BeTrue();
-        result.Value!.MinCompanionPayoutPoints.Should().Be(150);
+        result.Value!.MinCompanionPayoutPoints.Should().Be(135);
         result.Value.MaxCompanionPayoutPoints.Should().Be(255);
-        result.Value.MinLearnerChargePoints.Should().Be(188);
+        result.Value.MinLearnerChargePoints.Should().Be(169);
         result.Value.MaxLearnerChargePoints.Should().Be(319);
-        result.Value.MinPlatformFeePoints.Should().Be(38);
+        result.Value.MinPlatformFeePoints.Should().Be(34);
         result.Value.MaxPlatformFeePoints.Should().Be(64);
+    }
+
+    [Theory]
+    [InlineData(new[] { 30 }, new[] { 30 })]
+    [InlineData(new[] { 45 }, new[] { 30, 45 })]
+    [InlineData(new[] { 60 }, new[] { 30, 45, 60 })]
+    [InlineData(new[] { 90 }, new[] { 30, 45, 60, 90 })]
+    [InlineData(new[] { 120 }, new[] { 30, 45, 60, 90, 120 })]
+    [InlineData(new[] { 45, 120 }, new[] { 30, 45, 60, 90, 120 })]
+    public void NormalizeDurations_WhenMaxDurationIsProvided_ExpandsToAllSupportedLowerDurations(
+        int[] requestDurations,
+        int[] expectedDurations)
+    {
+        var normalizedDurations = SessionPricingService.NormalizeDurations(requestDurations);
+
+        normalizedDurations.Should().BeEquivalentTo(expectedDurations, options => options.WithStrictOrdering());
     }
 
     [Fact]
@@ -83,5 +99,20 @@ public class SessionPricingServiceTests
         result.Value!.CompanionPayoutPoints.Should().Be(61);
         result.Value.LearnerChargePoints.Should().Be(77);
         result.Value.PlatformFeePoints.Should().Be(16);
+    }
+
+    [Fact]
+    public void BuildDurationPricingOptions_WhenFormulaSessionIsAvailable_ReturnsExactPointsPerDuration()
+    {
+        var systemConfigServiceMock = new Mock<ISystemConfigService>();
+        var service = new SessionPricingService(systemConfigServiceMock.Object);
+        var skill = new Skill { SkillId = Guid.NewGuid(), Name = "Speaking", Slug = "speaking", BasePointCost = 100, IsActive = true };
+
+        var result = service.BuildDurationPricingOptions(skill, 1, new[] { 60 }, 25);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Should().HaveCount(3);
+        result.Value!.Select(item => item.DurationMinutes).Should().BeEquivalentTo(new[] { 30, 45, 60 }, options => options.WithStrictOrdering());
+        result.Value.Select(item => item.LearnerChargePoints).Should().BeEquivalentTo(new[] { 169, 188, 219 }, options => options.WithStrictOrdering());
     }
 }

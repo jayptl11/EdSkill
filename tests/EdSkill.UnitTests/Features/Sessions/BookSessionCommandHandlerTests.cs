@@ -120,6 +120,50 @@ public class BookSessionCommandHandlerTests
     }
 
     [Fact]
+    public async Task Handle_WhenExistingFormulaSessionStoresOnlyMaxDuration_AllowsLowerSupportedDuration()
+    {
+        var userId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+        var companionId = Guid.Parse("22222222-2222-2222-2222-222222222222");
+        var skillId = Guid.NewGuid();
+        var users = new List<User> { new() { UserId = userId, Roles = ["learner"] } };
+        var sessions = new List<Session>
+        {
+            new()
+            {
+                SessionId = Guid.NewGuid(),
+                CompanionId = companionId,
+                SkillId = skillId,
+                Skill = "Speaking",
+                PricingModel = SessionPricingModel.FormulaV1,
+                DurationOptions = new List<int> { 120 },
+                DurationMinutes = 120,
+                Status = SessionStatus.Available
+            }
+        };
+        var skills = new List<Skill> { new() { SkillId = skillId, Name = "Speaking", Slug = "speaking", BasePointCost = 100, IsActive = true } };
+        var profiles = new List<UserProfile> { new() { ProfileId = Guid.NewGuid(), UserId = companionId, DisplayName = "Companion", CredentialUrls = new List<string> { "https://cdn.edskill.test/cert.pdf" } } };
+
+        var handler = CreateHandler(
+            userId,
+            users,
+            sessions,
+            session =>
+            {
+                session.Status = SessionStatus.Pending;
+                return Result.Success();
+            },
+            skills,
+            profiles,
+            new FormulaSessionPricingSnapshot(30, 135, 169, 34, 100, 75, 60));
+
+        var result = await handler.Handle(new BookSessionCommand(sessions[0].SessionId, 30), CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        sessions[0].DurationOptions.Should().BeEquivalentTo(new[] { 30, 45, 60, 90, 120 });
+        sessions[0].SelectedDurationMinutes.Should().Be(30);
+    }
+
+    [Fact]
     public async Task Handle_WhenFormulaSnapshotChargeExceedsWallet_ReturnsInsufficientPoints()
     {
         var userId = Guid.Parse("11111111-1111-1111-1111-111111111111");

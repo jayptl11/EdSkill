@@ -7,5 +7,6 @@ public interface ISessionPricingService
 {
     Task<int> GetPlatformMarkupPctAsync(CancellationToken cancellationToken);
     Result<SessionPricingPreview> BuildOfferPreview(Skill skill, int credentialCount, IReadOnlyCollection<int> durationOptions, int platformMarkupPct);
+    Result<IReadOnlyCollection<SessionDurationPricingOption>> BuildDurationPricingOptions(Skill skill, int credentialCount, IReadOnlyCollection<int> durationOptions, int platformMarkupPct);
     Result<FormulaSessionPricingSnapshot> BuildBookingSnapshot(Skill skill, int credentialCount, int selectedDurationMinutes, int platformMarkupPct);
 }

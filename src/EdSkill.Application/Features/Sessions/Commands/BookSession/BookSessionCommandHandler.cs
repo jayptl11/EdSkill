@@ -1,5 +1,6 @@
 using EdSkill.Application.Common.Interfaces;
 using EdSkill.Application.Common.Models;
+using EdSkill.Application.Common.Services;
 using EdSkill.Application.Features.Profile;
 using EdSkill.Application.Features.Sessions.DTOs;
 using EdSkill.Domain.Entities;
@@ -79,9 +80,15 @@ public class BookSessionCommandHandler : IRequestHandler<BookSessionCommand, Res
                     return Result<SessionDto>.Failure("SKILL_NOT_FOUND", "Skill was not found.");
                 }
 
-                if (!session.DurationOptions.Contains(request.SelectedDurationMinutes))
+                var supportedDurationOptions = SessionPricingService.NormalizeDurations(session.DurationOptions);
+                if (!supportedDurationOptions.Contains(request.SelectedDurationMinutes))
                 {
                     return Result<SessionDto>.Failure("INVALID_SELECTED_DURATION", "Selected duration is not supported for this session.");
+                }
+
+                if (!session.DurationOptions.SequenceEqual(supportedDurationOptions))
+                {
+                    session.DurationOptions = supportedDurationOptions.ToList();
                 }
 
                 skill = await _context.Skills.FirstOrDefaultAsync(item => item.SkillId == session.SkillId.Value && item.IsActive && !item.IsDeleted, ct);

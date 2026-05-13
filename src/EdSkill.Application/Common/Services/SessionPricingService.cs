@@ -46,6 +46,15 @@ public sealed class SessionPricingService : ISessionPricingService
         return TryBuildBookingSnapshot(skill, credentialCount, selectedDurationMinutes, platformMarkupPct);
     }
 
+    public Result<IReadOnlyCollection<SessionDurationPricingOption>> BuildDurationPricingOptions(
+        Skill skill,
+        int credentialCount,
+        IReadOnlyCollection<int> durationOptions,
+        int platformMarkupPct)
+    {
+        return TryBuildDurationPricingOptions(skill, credentialCount, durationOptions, platformMarkupPct);
+    }
+
     public static Result<SessionPricingPreview> TryBuildOfferPreview(
         Skill skill,
         int credentialCount,
@@ -98,6 +107,40 @@ public sealed class SessionPricingService : ISessionPricingService
             CalculateBreakdown(skill.BasePointCost, credentialBonus, selectedDurationMinutes, platformMarkupPct));
     }
 
+    public static Result<IReadOnlyCollection<SessionDurationPricingOption>> TryBuildDurationPricingOptions(
+        Skill skill,
+        int credentialCount,
+        IReadOnlyCollection<int> durationOptions,
+        int platformMarkupPct)
+    {
+        var normalizedDurations = NormalizeDurations(durationOptions);
+        if (normalizedDurations.Count == 0)
+        {
+            return Result<IReadOnlyCollection<SessionDurationPricingOption>>.Failure("INVALID_DURATION_OPTIONS", "Duration options are invalid.");
+        }
+
+        if (skill.BasePointCost <= 0)
+        {
+            return Result<IReadOnlyCollection<SessionDurationPricingOption>>.Failure("SKILL_BASE_POINTS_INVALID", "Skill base points are invalid.");
+        }
+
+        var credentialBonus = GetCredentialBonus(credentialCount);
+        var pricingOptions = normalizedDurations
+            .Select(duration =>
+            {
+                var breakdown = CalculateBreakdown(skill.BasePointCost, credentialBonus, duration, platformMarkupPct);
+                return new SessionDurationPricingOption(
+                    breakdown.SelectedDurationMinutes,
+                    breakdown.LearnerChargePoints,
+                    breakdown.CompanionPayoutPoints,
+                    breakdown.PlatformFeePoints,
+                    breakdown.DurationMultiplierPercentSnapshot);
+            })
+            .ToList();
+
+        return Result<IReadOnlyCollection<SessionDurationPricingOption>>.Success(pricingOptions);
+    }
+
     public static IReadOnlyCollection<int> NormalizeDurations(IReadOnlyCollection<int>? durations)
     {
         if (durations is null || durations.Count == 0)
@@ -105,10 +148,21 @@ public sealed class SessionPricingService : ISessionPricingService
             return [];
         }
 
-        return durations
+        var normalizedDurations = durations
             .Where(DurationMultiplierPercents.ContainsKey)
             .Distinct()
             .OrderBy(value => value)
+            .ToList();
+
+        if (normalizedDurations.Count == 0)
+        {
+            return [];
+        }
+
+        var maxDuration = normalizedDurations.Max();
+        return DurationMultiplierPercents.Keys
+            .Where(duration => duration <= maxDuration)
+            .OrderBy(duration => duration)
             .ToList();
     }
 

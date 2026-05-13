@@ -20,6 +20,15 @@ public record SessionPricingBreakdownDto(
     int? DurationMultiplierPercent
 );
 
+public record SessionDurationPricingOptionDto(
+    int DurationMinutes,
+    int LearnerChargePoints,
+    int CompanionPayoutPoints,
+    int PlatformFeePoints,
+    int DurationMultiplierPercent,
+    bool IsSelected
+);
+
 public record SessionDto(
     Guid SessionId,
     Guid CompanionId,
@@ -32,6 +41,7 @@ public record SessionDto(
     int PointCost,
     SessionPricingModel PricingModel,
     IReadOnlyCollection<int> DurationOptions,
+    IReadOnlyCollection<SessionDurationPricingOptionDto> DurationPricingOptions,
     int? SelectedDurationMinutes,
     SessionPricingPreviewDto PricingPreview,
     SessionPricingBreakdownDto? PricingBreakdown,

@@ -8,6 +8,13 @@ public sealed record SessionPricingPreview(
     int MinPlatformFeePoints,
     int MaxPlatformFeePoints);
 
+public sealed record SessionDurationPricingOption(
+    int DurationMinutes,
+    int LearnerChargePoints,
+    int CompanionPayoutPoints,
+    int PlatformFeePoints,
+    int DurationMultiplierPercent);
+
 public sealed record FormulaSessionPricingSnapshot(
     int SelectedDurationMinutes,
     int CompanionPayoutPoints,

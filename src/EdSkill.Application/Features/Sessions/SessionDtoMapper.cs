@@ -15,7 +15,11 @@ public static class SessionDtoMapper
         UserProfile? companionProfile = null,
         int? platformMarkupPct = null)
     {
+        var durationOptions = session.PricingModel == SessionPricingModel.FormulaV1
+            ? SessionPricingService.NormalizeDurations(session.DurationOptions)
+            : session.DurationOptions.AsReadOnly();
         var pricingPreview = BuildPricingPreview(session, skill, companionProfile, platformMarkupPct);
+        var durationPricingOptions = BuildDurationPricingOptions(session, skill, companionProfile, platformMarkupPct, durationOptions);
 
         return new SessionDto(
             session.SessionId,
@@ -28,7 +32,8 @@ public static class SessionDtoMapper
             session.SelectedDurationMinutes ?? session.DurationMinutes,
             session.LearnerChargePoints ?? pricingPreview.MinLearnerChargePoints,
             session.PricingModel,
-            session.DurationOptions.AsReadOnly(),
+            durationOptions,
+            durationPricingOptions,
             session.SelectedDurationMinutes,
             new SessionPricingPreviewDto(
                 pricingPreview.MinCompanionPayoutPoints,
@@ -91,6 +96,63 @@ public static class SessionDtoMapper
         }
 
         return SessionPricingService.BuildLegacyPreview(session.PointCost);
+    }
+
+    private static IReadOnlyCollection<SessionDurationPricingOptionDto> BuildDurationPricingOptions(
+        Session session,
+        Skill? skill,
+        UserProfile? companionProfile,
+        int? platformMarkupPct,
+        IReadOnlyCollection<int> durationOptions)
+    {
+        if (session.PricingModel != SessionPricingModel.FormulaV1)
+        {
+            return Array.Empty<SessionDurationPricingOptionDto>();
+        }
+
+        if (session.SelectedDurationMinutes.HasValue
+            && session.LearnerChargePoints.HasValue
+            && session.CompanionPayoutPoints.HasValue
+            && session.PlatformFeePoints.HasValue
+            && session.DurationMultiplierPercentSnapshot.HasValue)
+        {
+            return
+            [
+                new SessionDurationPricingOptionDto(
+                    session.SelectedDurationMinutes.Value,
+                    session.LearnerChargePoints.Value,
+                    session.CompanionPayoutPoints.Value,
+                    session.PlatformFeePoints.Value,
+                    session.DurationMultiplierPercentSnapshot.Value,
+                    true)
+            ];
+        }
+
+        if (skill is null || companionProfile is null || !platformMarkupPct.HasValue)
+        {
+            return Array.Empty<SessionDurationPricingOptionDto>();
+        }
+
+        var pricingOptionsResult = SessionPricingService.TryBuildDurationPricingOptions(
+            skill,
+            CompanionCredentialRules.GetCredentialCount(companionProfile),
+            durationOptions,
+            platformMarkupPct.Value);
+
+        if (!pricingOptionsResult.IsSuccess || pricingOptionsResult.Value is null)
+        {
+            return Array.Empty<SessionDurationPricingOptionDto>();
+        }
+
+        return pricingOptionsResult.Value
+            .Select(option => new SessionDurationPricingOptionDto(
+                option.DurationMinutes,
+                option.LearnerChargePoints,
+                option.CompanionPayoutPoints,
+                option.PlatformFeePoints,
+                option.DurationMultiplierPercent,
+                session.SelectedDurationMinutes == option.DurationMinutes))
+            .ToList();
     }
 
     private static SessionPricingBreakdownDto? BuildPricingBreakdown(Session session)
