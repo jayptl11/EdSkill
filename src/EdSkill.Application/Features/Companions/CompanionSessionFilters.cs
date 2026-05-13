@@ -33,7 +33,9 @@ internal static class CompanionSessionFilters
         var validSkillKeys = BuildSkillKeys(skill);
 
         return sessions
-            .Where(session => validSkillKeys.Contains(SkillNormalization.NormalizeLookup(session.Skill)))
+            .Where(session =>
+                session.SkillId == skill.SkillId
+                || validSkillKeys.Contains(SkillNormalization.NormalizeLookup(session.Skill)))
             .ToList();
     }
 

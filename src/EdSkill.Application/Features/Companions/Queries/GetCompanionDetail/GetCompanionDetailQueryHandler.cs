@@ -10,10 +10,12 @@ namespace EdSkill.Application.Features.Companions.Queries.GetCompanionDetail;
 public class GetCompanionDetailQueryHandler : IRequestHandler<GetCompanionDetailQuery, Result<CompanionDetailDto>>
 {
     private readonly IApplicationDbContext _context;
+    private readonly ISessionPricingService _sessionPricingService;
 
-    public GetCompanionDetailQueryHandler(IApplicationDbContext context)
+    public GetCompanionDetailQueryHandler(IApplicationDbContext context, ISessionPricingService sessionPricingService)
     {
         _context = context;
+        _sessionPricingService = sessionPricingService;
     }
 
     public async Task<Result<CompanionDetailDto>> Handle(GetCompanionDetailQuery request, CancellationToken cancellationToken)
@@ -51,6 +53,10 @@ public class GetCompanionDetailQueryHandler : IRequestHandler<GetCompanionDetail
                 cancellationToken))
             .OrderBy(session => session.ScheduledAt)
             .ToList();
+
+        var platformMarkupPct = sessions.Any(session => session.PricingModel == Domain.Enums.SessionPricingModel.FormulaV1)
+            ? await _sessionPricingService.GetPlatformMarkupPctAsync(cancellationToken)
+            : (int?)null;
 
         var reviewBaseQuery =
             from review in _context.Reviews.AsNoTracking()
@@ -109,6 +115,6 @@ public class GetCompanionDetailQueryHandler : IRequestHandler<GetCompanionDetail
             avgRating,
             totalReviews,
             new CompanionReviewListDto(reviewDtos, totalReviews, request.ReviewPage, request.ReviewLimit),
-            sessions.Select(SessionDtoMapper.Map).ToList()));
+            sessions.Select(session => SessionDtoMapper.Map(session, skill, companion.UserProfile, platformMarkupPct)).ToList()));
     }
 }

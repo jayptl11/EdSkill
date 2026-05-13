@@ -4,4 +4,4 @@ using MediatR;
 
 namespace EdSkill.Application.Features.Sessions.Commands.BookSession;
 
-public record BookSessionCommand(Guid SessionId) : IRequest<Result<SessionDto>>;
+public record BookSessionCommand(Guid SessionId, int SelectedDurationMinutes) : IRequest<Result<SessionDto>>;

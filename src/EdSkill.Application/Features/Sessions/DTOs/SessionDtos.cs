@@ -2,6 +2,24 @@ using EdSkill.Domain.Enums;
 
 namespace EdSkill.Application.Features.Sessions.DTOs;
 
+public record SessionPricingPreviewDto(
+    int MinCompanionPayoutPoints,
+    int MaxCompanionPayoutPoints,
+    int MinLearnerChargePoints,
+    int MaxLearnerChargePoints,
+    int MinPlatformFeePoints,
+    int MaxPlatformFeePoints
+);
+
+public record SessionPricingBreakdownDto(
+    int LearnerChargePoints,
+    int CompanionPayoutPoints,
+    int PlatformFeePoints,
+    int? SkillBasePoints,
+    int? CredentialBonusPoints,
+    int? DurationMultiplierPercent
+);
+
 public record SessionDto(
     Guid SessionId,
     Guid CompanionId,
@@ -12,6 +30,11 @@ public record SessionDto(
     string? Location,
     int DurationMinutes,
     int PointCost,
+    SessionPricingModel PricingModel,
+    IReadOnlyCollection<int> DurationOptions,
+    int? SelectedDurationMinutes,
+    SessionPricingPreviewDto PricingPreview,
+    SessionPricingBreakdownDto? PricingBreakdown,
     DateTime ScheduledAt,
     SessionStatus Status,
     string? JitsiRoomId,
@@ -45,10 +68,11 @@ public record CreateSessionRequest(
     string? Description,
     SessionDeliveryMode DeliveryMode,
     string? Location,
-    int DurationMinutes,
-    int PointCost,
+    IReadOnlyCollection<int> DurationOptions,
     DateTime ScheduledAt
 );
+
+public record BookSessionRequest(int SelectedDurationMinutes);
 
 public record RejectSessionRequest(string? Reason);
 

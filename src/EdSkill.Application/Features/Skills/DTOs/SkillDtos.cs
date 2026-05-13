@@ -12,6 +12,7 @@ public record AdminSkillDto(
     string Name,
     string Slug,
     string? Category,
+    int BasePointCost,
     IReadOnlyCollection<string> Aliases,
     bool IsActive
 );
@@ -20,6 +21,7 @@ public record CreateSkillRequest(
     string Name,
     string? Slug,
     string? Category,
+    int BasePointCost,
     IReadOnlyCollection<string>? Aliases
 );
 
@@ -28,12 +30,14 @@ public sealed class UpdateSkillRequest
     private string? _name;
     private string? _slug;
     private string? _category;
+    private int? _basePointCost;
     private IReadOnlyCollection<string>? _aliases;
     private bool? _isActive;
 
     public bool HasName { get; private set; }
     public bool HasSlug { get; private set; }
     public bool HasCategory { get; private set; }
+    public bool HasBasePointCost { get; private set; }
     public bool HasAliases { get; private set; }
     public bool HasIsActive { get; private set; }
 
@@ -64,6 +68,16 @@ public sealed class UpdateSkillRequest
         {
             HasCategory = true;
             _category = value;
+        }
+    }
+
+    public int? BasePointCost
+    {
+        get => _basePointCost;
+        set
+        {
+            HasBasePointCost = true;
+            _basePointCost = value;
         }
     }
 

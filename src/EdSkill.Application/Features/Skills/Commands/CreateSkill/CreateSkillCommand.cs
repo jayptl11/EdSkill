@@ -8,5 +8,6 @@ public record CreateSkillCommand(
     string Name,
     string? Slug,
     string? Category,
+    int BasePointCost,
     IReadOnlyCollection<string>? Aliases
 ) : IRequest<Result<AdminSkillDto>>;

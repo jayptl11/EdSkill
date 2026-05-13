@@ -8,18 +8,19 @@ public static class SystemConfigCatalog
 {
     public static IReadOnlyCollection<SystemConfigDefinition> Definitions { get; } =
     [
-        new(SystemConfigKeys.PointSignupBonus, "50", "Điểm khởi đầu khi đăng ký."),
-        new(SystemConfigKeys.PointPlatformFeePct, "20", "% phí nền tảng trên mỗi giao dịch completed."),
-        new(SystemConfigKeys.TokenLearnerPerSession, "5", "Token Learner nhận sau mỗi phiên hợp lệ."),
-        new(SystemConfigKeys.TokenCompanionPerSession, "3", "Token Companion nhận sau mỗi phiên hợp lệ."),
-        new(SystemConfigKeys.TokenDailyEarnLimit, "20", "Token tối đa nhận trong một ngày."),
-        new(SystemConfigKeys.TokenWeeklyEarnLimit, "100", "Token tối đa nhận trong một tuần."),
-        new(SystemConfigKeys.SessionMinDurationMinutes, "10", "Thời lượng tối thiểu để phiên hợp lệ."),
-        new(SystemConfigKeys.SessionCancelDeadlineHours, "2", "Số giờ trước phiên được hủy không mất điểm."),
-        new(SystemConfigKeys.SessionLateCancelCompanionPct, "80", "% điểm Companion nhận khi Learner hủy muộn."),
-        new(SystemConfigKeys.SessionLateCancelPlatformPct, "20", "% điểm nền tảng nhận khi Learner hủy muộn."),
-        new(SystemConfigKeys.SessionMaxPerDayPerCompanion, "8", "Số phiên tối đa một Companion mở trong ngày."),
-        new(SystemConfigKeys.SessionBufferMinutes, "10", "Thời gian nghỉ tối thiểu giữa hai phiên.")
+        new(SystemConfigKeys.PointSignupBonus, "50", "Diem khoi dau khi dang ky."),
+        new(SystemConfigKeys.PointPlatformFeePct, "20", "% phi nen tang tren moi giao dich completed legacy."),
+        new(SystemConfigKeys.PointPlatformMarkupPct, "25", "% markup cong len gia Companion cho Formula Pricing."),
+        new(SystemConfigKeys.TokenLearnerPerSession, "5", "Token Learner nhan sau moi phien hop le legacy."),
+        new(SystemConfigKeys.TokenCompanionPerSession, "3", "Token Companion nhan sau moi phien hop le legacy."),
+        new(SystemConfigKeys.TokenDailyEarnLimit, "20", "Token toi da nhan trong mot ngay."),
+        new(SystemConfigKeys.TokenWeeklyEarnLimit, "100", "Token toi da nhan trong mot tuan."),
+        new(SystemConfigKeys.SessionMinDurationMinutes, "10", "Thoi luong toi thieu de phien hop le."),
+        new(SystemConfigKeys.SessionCancelDeadlineHours, "2", "So gio truoc phien duoc huy khong mat diem."),
+        new(SystemConfigKeys.SessionLateCancelCompanionPct, "80", "% diem Companion nhan khi Learner huy muon."),
+        new(SystemConfigKeys.SessionLateCancelPlatformPct, "20", "% diem nen tang nhan khi Learner huy muon."),
+        new(SystemConfigKeys.SessionMaxPerDayPerCompanion, "8", "So phien toi da mot Companion mo trong ngay."),
+        new(SystemConfigKeys.SessionBufferMinutes, "10", "Thoi gian nghi toi thieu giua hai phien.")
     ];
 
     public static bool TryGet(string key, out SystemConfigDefinition definition)
@@ -51,6 +52,7 @@ public static class SystemConfigCatalog
         {
             SystemConfigKeys.PointSignupBonus => number >= 0,
             SystemConfigKeys.PointPlatformFeePct => number is >= 0 and <= 100,
+            SystemConfigKeys.PointPlatformMarkupPct => number is >= 0 and <= 100,
             SystemConfigKeys.TokenLearnerPerSession => number >= 0,
             SystemConfigKeys.TokenCompanionPerSession => number >= 0,
             SystemConfigKeys.TokenDailyEarnLimit => number >= 0,

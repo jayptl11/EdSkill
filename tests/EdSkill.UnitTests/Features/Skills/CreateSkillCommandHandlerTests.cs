@@ -26,7 +26,7 @@ public class CreateSkillCommandHandlerTests
         _contextMock.Setup(x => x.Skills).Returns(skills.BuildMockDbSet().Object);
         _contextMock.Setup(x => x.SaveChangesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);
 
-        var command = new CreateSkillCommand(" Speaking ", null, " Communication ", new[] { "Tiếng Anh" });
+        var command = new CreateSkillCommand(" Speaking ", null, " Communication ", 120, new[] { "Tieng Anh" });
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
@@ -35,7 +35,8 @@ public class CreateSkillCommandHandlerTests
         skills[0].Name.Should().Be("Speaking");
         skills[0].Slug.Should().Be("speaking");
         skills[0].Category.Should().Be("Communication");
-        skills[0].Aliases.Should().BeEquivalentTo("Tiếng Anh");
+        skills[0].BasePointCost.Should().Be(120);
+        skills[0].Aliases.Should().BeEquivalentTo("Tieng Anh");
     }
 
     [Fact]
@@ -48,6 +49,7 @@ public class CreateSkillCommandHandlerTests
                 SkillId = Guid.NewGuid(),
                 Name = "Speaking",
                 Slug = "speaking",
+                BasePointCost = 100,
                 Aliases = new List<string> { "Presentation basics" },
                 IsActive = true
             }
@@ -55,7 +57,7 @@ public class CreateSkillCommandHandlerTests
 
         _contextMock.Setup(x => x.Skills).Returns(skills.BuildMockDbSet().Object);
 
-        var command = new CreateSkillCommand("Presentation", null, "Communication", new[] { "Speaking" });
+        var command = new CreateSkillCommand("Presentation", null, "Communication", 110, new[] { "Speaking" });
 
         var result = await _handler.Handle(command, CancellationToken.None);
 

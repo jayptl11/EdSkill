@@ -68,7 +68,7 @@ public class AdminSkillsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
     public async Task<IActionResult> CreateSkill([FromBody] CreateSkillRequest request, CancellationToken cancellationToken)
     {
-        var command = new CreateSkillCommand(request.Name, request.Slug, request.Category, request.Aliases);
+        var command = new CreateSkillCommand(request.Name, request.Slug, request.Category, request.BasePointCost, request.Aliases);
         var result = await _sender.Send(command, cancellationToken);
 
         if (result.IsSuccess)
@@ -96,6 +96,8 @@ public class AdminSkillsController : ControllerBase
             request.Slug,
             request.HasCategory,
             request.Category,
+            request.HasBasePointCost,
+            request.BasePointCost,
             request.HasAliases,
             request.Aliases,
             request.HasIsActive,

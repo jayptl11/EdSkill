@@ -8,6 +8,8 @@ public record ProfileDto(
     DateTime? DateOfBirth,
     string? Phone,
     string? DegreeUrl,
+    IReadOnlyCollection<string> CredentialUrls,
+    int CredentialCount,
     IReadOnlyCollection<string> SkillsToTeach,
     IReadOnlyCollection<string> SkillsToLearn,
     bool IsPublic,
@@ -51,6 +53,7 @@ public sealed class UpdateMyProfileRequest
     private DateTime? _dateOfBirth;
     private string? _phone;
     private string? _degreeUrl;
+    private IReadOnlyCollection<string>? _credentialUrls;
     private IReadOnlyCollection<string>? _skillsToTeach;
     private IReadOnlyCollection<string>? _skillsToLearn;
     private string? _avatarUrl;
@@ -61,6 +64,7 @@ public sealed class UpdateMyProfileRequest
     public bool HasDateOfBirth { get; private set; }
     public bool HasPhone { get; private set; }
     public bool HasDegreeUrl { get; private set; }
+    public bool HasCredentialUrls { get; private set; }
     public bool HasSkillsToTeach { get; private set; }
     public bool HasSkillsToLearn { get; private set; }
     public bool HasAvatarUrl { get; private set; }
@@ -113,6 +117,16 @@ public sealed class UpdateMyProfileRequest
         {
             HasDegreeUrl = true;
             _degreeUrl = value;
+        }
+    }
+
+    public IReadOnlyCollection<string>? CredentialUrls
+    {
+        get => _credentialUrls;
+        set
+        {
+            HasCredentialUrls = true;
+            _credentialUrls = value;
         }
     }
 

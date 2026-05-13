@@ -63,6 +63,18 @@ public class UpdateMyProfileCommandHandler : IRequestHandler<UpdateMyProfileComm
         if (request.HasDegreeUrl)
         {
             profile.DegreeUrl = NormalizeOptionalString(request.DegreeUrl);
+            if (!request.HasCredentialUrls)
+            {
+                profile.CredentialUrls = string.IsNullOrWhiteSpace(profile.DegreeUrl)
+                    ? []
+                    : [profile.DegreeUrl];
+            }
+        }
+
+        if (request.HasCredentialUrls)
+        {
+            profile.CredentialUrls = NormalizeUrlCollection(request.CredentialUrls);
+            profile.DegreeUrl = profile.CredentialUrls.FirstOrDefault();
         }
 
         if (request.HasSkillsToTeach)
@@ -115,6 +127,20 @@ public class UpdateMyProfileCommandHandler : IRequestHandler<UpdateMyProfileComm
     private static string? NormalizeOptionalString(string? value)
     {
         return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+    }
+
+    private static List<string> NormalizeUrlCollection(IReadOnlyCollection<string>? values)
+    {
+        if (values is null || values.Count == 0)
+        {
+            return [];
+        }
+
+        return values
+            .Where(value => !string.IsNullOrWhiteSpace(value))
+            .Select(value => value.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
     }
 
     private static Result<List<Skill>> ResolveSkills(IReadOnlyCollection<string>? skills, IReadOnlyCollection<Skill> activeSkills)

@@ -24,6 +24,7 @@ namespace EdSkill.Domain.Entities
         public DateTime? DateOfBirth { get; set; }
         public string? Phone { get; set; }
         public string? DegreeUrl { get; set; }
+        public List<string> CredentialUrls { get; set; } = new();
         public string? Address { get; set; }
     }
 }

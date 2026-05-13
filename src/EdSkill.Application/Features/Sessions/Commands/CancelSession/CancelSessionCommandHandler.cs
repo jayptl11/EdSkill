@@ -1,7 +1,6 @@
 using EdSkill.Application.Common.Interfaces;
 using EdSkill.Application.Common.Models;
 using EdSkill.Application.Common.System;
-using EdSkill.Application.Features.Sessions;
 using EdSkill.Application.Features.Sessions.DTOs;
 using EdSkill.Domain.Enums;
 using MediatR;
@@ -53,12 +52,20 @@ public class CancelSessionCommandHandler : IRequestHandler<CancelSessionCommand,
 
             if (session.Status is not (SessionStatus.Pending or SessionStatus.Confirmed))
             {
-                return Result<SessionDto>.Failure("SESSION_INVALID_STATUS", "Hành động không hợp lệ với trạng thái hiện tại.");
+                return Result<SessionDto>.Failure("SESSION_INVALID_STATUS", "Hanh dong khong hop le voi trang thai hien tai.");
             }
 
             if (!session.LearnerId.HasValue)
             {
                 return Result<SessionDto>.Failure("SESSION_INVALID_STATUS", "Session has not been booked yet.");
+            }
+
+            var learnerChargePoints = session.PricingModel == SessionPricingModel.FormulaV1
+                ? session.LearnerChargePoints ?? 0
+                : session.PointCost;
+            if (learnerChargePoints <= 0)
+            {
+                return Result<SessionDto>.Failure("SESSION_INVALID_STATUS", "Session pricing is invalid.");
             }
 
             var learnerWallet = await _pointLedgerService.GetOrCreateWalletAsync(session.LearnerId.Value, ct);
@@ -67,7 +74,7 @@ public class CancelSessionCommandHandler : IRequestHandler<CancelSessionCommand,
             {
                 var companionCancelRefundResult = _pointLedgerService.ReleaseHeldPoints(
                     learnerWallet,
-                    session.PointCost,
+                    learnerChargePoints,
                     session.SessionId,
                     PointTransactionType.Refund,
                     "Points refunded after Companion cancellation.");
@@ -87,7 +94,7 @@ public class CancelSessionCommandHandler : IRequestHandler<CancelSessionCommand,
                 {
                     var refundResult = _pointLedgerService.ReleaseHeldPoints(
                         learnerWallet,
-                        session.PointCost,
+                        learnerChargePoints,
                         session.SessionId,
                         PointTransactionType.Refund,
                         "Points refunded after Learner cancellation.");
@@ -104,7 +111,7 @@ public class CancelSessionCommandHandler : IRequestHandler<CancelSessionCommand,
 
                     var paymentResult = _pointLedgerService.CompleteSessionPayment(
                         learnerWallet,
-                        session.PointCost,
+                        learnerChargePoints,
                         session.SessionId,
                         "cancelled_no_refund");
                     if (!paymentResult.IsSuccess)
@@ -113,8 +120,8 @@ public class CancelSessionCommandHandler : IRequestHandler<CancelSessionCommand,
                     }
 
                     var companionWallet = await _pointLedgerService.GetOrCreateWalletAsync(session.CompanionId, ct);
-                    var companionAmount = session.PointCost * companionPct / 100;
-                    var platformAmount = session.PointCost * platformPct / 100;
+                    var companionAmount = learnerChargePoints * companionPct / 100;
+                    var platformAmount = learnerChargePoints * platformPct / 100;
 
                     var companionResult = _pointLedgerService.CreditUser(
                         companionWallet,

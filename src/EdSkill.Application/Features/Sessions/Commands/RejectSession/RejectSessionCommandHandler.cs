@@ -1,6 +1,5 @@
 using EdSkill.Application.Common.Interfaces;
 using EdSkill.Application.Common.Models;
-using EdSkill.Application.Features.Sessions;
 using EdSkill.Application.Features.Sessions.DTOs;
 using EdSkill.Domain.Enums;
 using MediatR;
@@ -49,13 +48,21 @@ public class RejectSessionCommandHandler : IRequestHandler<RejectSessionCommand,
 
             if (session.Status != SessionStatus.Pending || !session.LearnerId.HasValue)
             {
-                return Result<SessionDto>.Failure("SESSION_INVALID_STATUS", "Hành động không hợp lệ với trạng thái hiện tại.");
+                return Result<SessionDto>.Failure("SESSION_INVALID_STATUS", "Hanh dong khong hop le voi trang thai hien tai.");
+            }
+
+            var learnerChargePoints = session.PricingModel == SessionPricingModel.FormulaV1
+                ? session.LearnerChargePoints ?? 0
+                : session.PointCost;
+            if (learnerChargePoints <= 0)
+            {
+                return Result<SessionDto>.Failure("SESSION_INVALID_STATUS", "Session pricing is invalid.");
             }
 
             var learnerWallet = await _pointLedgerService.GetOrCreateWalletAsync(session.LearnerId.Value, ct);
             var refundResult = _pointLedgerService.ReleaseHeldPoints(
                 learnerWallet,
-                session.PointCost,
+                learnerChargePoints,
                 session.SessionId,
                 PointTransactionType.Refund,
                 "Points refunded after session rejection.");

@@ -1,5 +1,6 @@
 using EdSkill.Application.Common.Interfaces;
 using EdSkill.Application.Common.Models;
+using EdSkill.Application.Common.System;
 using EdSkill.Application.Features.Sessions.Commands.CreateSessionOffer;
 using EdSkill.Application.Features.Sessions.DTOs;
 using EdSkill.Domain.Entities;
@@ -43,12 +44,13 @@ public class CreateSessionOfferCommandHandlerTests
                 SkillId = skillId,
                 Name = "Speaking",
                 Slug = "speaking",
+                BasePointCost = 100,
                 IsActive = true
             }
         };
 
         var result = await CreateHandler(userId, users, [], skills).Handle(
-            new CreateSessionOfferCommand(skillId, "Desc", SessionDeliveryMode.Online, null, 60, 100, DateTime.UtcNow.AddDays(1)),
+            new CreateSessionOfferCommand(skillId, "Desc", SessionDeliveryMode.Online, null, new[] { 45, 60 }, DateTime.UtcNow.AddDays(1)),
             CancellationToken.None);
 
         result.IsSuccess.Should().BeFalse();
@@ -56,7 +58,7 @@ public class CreateSessionOfferCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_WhenCompanionProfileComplete_CreatesAvailableSession()
+    public async Task Handle_WhenCompanionProfileComplete_CreatesFormulaSession()
     {
         var userId = Guid.NewGuid();
         var skillId = Guid.NewGuid();
@@ -77,6 +79,7 @@ public class CreateSessionOfferCommandHandlerTests
                     DateOfBirth = new DateTime(2000, 1, 2),
                     Phone = "+84912345678",
                     SkillsToTeach = new List<string> { "Speaking" },
+                    CredentialUrls = new List<string> { "https://cdn.edskill.test/degree/u/cert.pdf" },
                     IsPublic = true
                 }
             }
@@ -88,20 +91,80 @@ public class CreateSessionOfferCommandHandlerTests
                 SkillId = skillId,
                 Name = "Speaking",
                 Slug = "speaking",
+                BasePointCost = 100,
                 IsActive = true
             }
         };
 
         var result = await CreateHandler(userId, users, sessions, skills).Handle(
-            new CreateSessionOfferCommand(skillId, "Desc", SessionDeliveryMode.Online, null, 60, 100, DateTime.UtcNow.AddDays(1)),
+            new CreateSessionOfferCommand(skillId, "Desc", SessionDeliveryMode.Online, null, new[] { 45, 60 }, DateTime.UtcNow.AddDays(1)),
             CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
         sessions.Should().HaveCount(1);
         sessions[0].Status.Should().Be(SessionStatus.Available);
-        sessions[0].CompanionId.Should().Be(userId);
-        sessions[0].Skill.Should().Be("Speaking");
-        sessions[0].DeliveryMode.Should().Be(SessionDeliveryMode.Online);
+        sessions[0].PricingModel.Should().Be(SessionPricingModel.FormulaV1);
+        sessions[0].DurationOptions.Should().BeEquivalentTo(new[] { 45, 60 });
+        sessions[0].DurationMinutes.Should().Be(60);
+        result.Value!.PricingPreview.MinLearnerChargePoints.Should().BeGreaterThan(0);
+    }
+
+    [Fact]
+    public async Task Handle_WhenDurationOptionsOverlapExistingReservedSlot_ReturnsConflict()
+    {
+        var userId = Guid.NewGuid();
+        var skillId = Guid.NewGuid();
+        var scheduledAt = DateTime.UtcNow.AddDays(1);
+        var users = new List<User>
+        {
+            new()
+            {
+                UserId = userId,
+                Roles = new List<string> { "learner", "companion" },
+                UserProfile = new UserProfile
+                {
+                    ProfileId = Guid.NewGuid(),
+                    UserId = userId,
+                    DisplayName = "Teacher",
+                    AvatarUrl = "https://cdn.edskill.test/u/avatar.png",
+                    Bio = "I teach speaking",
+                    DateOfBirth = new DateTime(2000, 1, 2),
+                    Phone = "+84912345678",
+                    SkillsToTeach = new List<string> { "Speaking" },
+                    CredentialUrls = new List<string> { "https://cdn.edskill.test/degree/u/cert.pdf" },
+                    IsPublic = true
+                }
+            }
+        };
+        var sessions = new List<Session>
+        {
+            new()
+            {
+                SessionId = Guid.NewGuid(),
+                CompanionId = userId,
+                DurationMinutes = 120,
+                ScheduledAt = scheduledAt.AddMinutes(30),
+                Status = SessionStatus.Available
+            }
+        };
+        var skills = new List<Skill>
+        {
+            new()
+            {
+                SkillId = skillId,
+                Name = "Speaking",
+                Slug = "speaking",
+                BasePointCost = 100,
+                IsActive = true
+            }
+        };
+
+        var result = await CreateHandler(userId, users, sessions, skills).Handle(
+            new CreateSessionOfferCommand(skillId, "Desc", SessionDeliveryMode.Online, null, new[] { 45, 120 }, scheduledAt),
+            CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be("SESSION_TIME_CONFLICT");
     }
 
     private static CreateSessionOfferCommandHandler CreateHandler(
@@ -123,8 +186,17 @@ public class CreateSessionOfferCommandHandlerTests
 
         var systemConfigServiceMock = new Mock<ISystemConfigService>();
         systemConfigServiceMock
-            .Setup(x => x.GetIntValueAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Setup(x => x.GetIntValueAsync(SystemConfigKeys.SessionMaxPerDayPerCompanion, It.IsAny<CancellationToken>()))
             .ReturnsAsync(8);
+        systemConfigServiceMock
+            .Setup(x => x.GetIntValueAsync(SystemConfigKeys.SessionBufferMinutes, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(10);
+
+        var sessionPricingServiceMock = new Mock<ISessionPricingService>();
+        sessionPricingServiceMock.Setup(x => x.GetPlatformMarkupPctAsync(It.IsAny<CancellationToken>())).ReturnsAsync(25);
+        sessionPricingServiceMock
+            .Setup(x => x.BuildOfferPreview(It.IsAny<Skill>(), It.IsAny<int>(), It.IsAny<IReadOnlyCollection<int>>(), 25))
+            .Returns(Result<SessionPricingPreview>.Success(new SessionPricingPreview(135, 175, 169, 219, 34, 44)));
 
         var transactionExecutorMock = new Mock<ITransactionExecutor>();
         transactionExecutorMock
@@ -136,6 +208,7 @@ public class CreateSessionOfferCommandHandlerTests
             currentUserServiceMock.Object,
             dateTimeProviderMock.Object,
             systemConfigServiceMock.Object,
+            sessionPricingServiceMock.Object,
             transactionExecutorMock.Object);
     }
 }

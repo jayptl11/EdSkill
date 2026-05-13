@@ -1,7 +1,7 @@
 using EdSkill.Application.Common.Interfaces;
 using EdSkill.Application.Common.Models;
-using EdSkill.Application.Features.Sessions;
 using EdSkill.Application.Features.Sessions.DTOs;
+using EdSkill.Domain.Entities;
 using EdSkill.Domain.Enums;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -12,11 +12,16 @@ public class GetSessionByIdQueryHandler : IRequestHandler<GetSessionByIdQuery, R
 {
     private readonly IApplicationDbContext _context;
     private readonly ICurrentUserService _currentUserService;
+    private readonly ISessionPricingService _sessionPricingService;
 
-    public GetSessionByIdQueryHandler(IApplicationDbContext context, ICurrentUserService currentUserService)
+    public GetSessionByIdQueryHandler(
+        IApplicationDbContext context,
+        ICurrentUserService currentUserService,
+        ISessionPricingService sessionPricingService)
     {
         _context = context;
         _currentUserService = currentUserService;
+        _sessionPricingService = sessionPricingService;
     }
 
     public async Task<Result<SessionDto>> Handle(GetSessionByIdQuery request, CancellationToken cancellationToken)
@@ -40,6 +45,30 @@ public class GetSessionByIdQueryHandler : IRequestHandler<GetSessionByIdQuery, R
             return Result<SessionDto>.Failure("FORBIDDEN", "You do not have access to this session.");
         }
 
-        return Result<SessionDto>.Success(SessionDtoMapper.Map(session));
+        Skill? skill = null;
+        UserProfile? companionProfile = null;
+        int? platformMarkupPct = null;
+
+        if (session.PricingModel == SessionPricingModel.FormulaV1
+            && (!session.LearnerChargePoints.HasValue || !session.CompanionPayoutPoints.HasValue || !session.PlatformFeePoints.HasValue))
+        {
+            if (session.SkillId.HasValue)
+            {
+                skill = await _context.Skills
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(item => item.SkillId == session.SkillId.Value && item.IsActive && !item.IsDeleted, cancellationToken);
+            }
+
+            companionProfile = await _context.UserProfiles
+                .AsNoTracking()
+                .FirstOrDefaultAsync(item => item.UserId == session.CompanionId, cancellationToken);
+
+            if (skill != null && companionProfile != null)
+            {
+                platformMarkupPct = await _sessionPricingService.GetPlatformMarkupPctAsync(cancellationToken);
+            }
+        }
+
+        return Result<SessionDto>.Success(SessionDtoMapper.Map(session, skill, companionProfile, platformMarkupPct));
     }
 }

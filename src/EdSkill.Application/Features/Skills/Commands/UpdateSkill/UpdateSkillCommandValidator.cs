@@ -41,6 +41,15 @@ public class UpdateSkillCommandValidator : AbstractValidator<UpdateSkillCommand>
                 .WithErrorCode("INVALID_SKILL_CATEGORY");
         });
 
+        When(x => x.HasBasePointCost, () =>
+        {
+            RuleFor(x => x.BasePointCost)
+                .NotNull()
+                .GreaterThan(0)
+                .WithMessage("Skill base point cost must be greater than zero")
+                .WithErrorCode("INVALID_SKILL_BASE_POINTS");
+        });
+
         When(x => x.HasAliases, () =>
         {
             RuleFor(x => x.Aliases)

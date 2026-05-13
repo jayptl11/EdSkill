@@ -4,6 +4,7 @@ public static class SystemConfigKeys
 {
     public const string PointSignupBonus = "point.signup_bonus";
     public const string PointPlatformFeePct = "point.platform_fee_pct";
+    public const string PointPlatformMarkupPct = "point.platform_markup_pct";
     public const string TokenLearnerPerSession = "token.learner_per_session";
     public const string TokenCompanionPerSession = "token.companion_per_session";
     public const string TokenDailyEarnLimit = "token.daily_earn_limit";

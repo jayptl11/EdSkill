@@ -57,6 +57,12 @@ public class UpdateSkillCommandHandler : IRequestHandler<UpdateSkillCommand, Res
         skill.Name = name;
         skill.Slug = slug;
         skill.Category = category;
+
+        if (request.HasBasePointCost)
+        {
+            skill.BasePointCost = request.BasePointCost ?? skill.BasePointCost;
+        }
+
         skill.Aliases = aliases;
 
         if (request.HasIsActive)

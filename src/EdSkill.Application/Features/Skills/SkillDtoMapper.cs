@@ -17,6 +17,7 @@ internal static class SkillDtoMapper
             skill.Name,
             skill.Slug,
             skill.Category,
+            skill.BasePointCost,
             skill.Aliases.AsReadOnly(),
             skill.IsActive);
     }

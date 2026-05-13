@@ -1,7 +1,6 @@
 using EdSkill.Application.Common.Interfaces;
 using EdSkill.Application.Common.Models;
 using EdSkill.Application.Common.System;
-using EdSkill.Application.Features.Sessions;
 using EdSkill.Application.Features.Sessions.DTOs;
 using EdSkill.Domain.Enums;
 using MediatR;
@@ -14,6 +13,7 @@ public class ConfirmSessionCompletionCommandHandler : IRequestHandler<ConfirmSes
     private readonly IApplicationDbContext _context;
     private readonly ICurrentUserService _currentUserService;
     private readonly IPointLedgerService _pointLedgerService;
+    private readonly ITokenLedgerService _tokenLedgerService;
     private readonly ITransactionExecutor _transactionExecutor;
     private readonly IDateTimeProvider _dateTimeProvider;
     private readonly ISystemConfigService _systemConfigService;
@@ -22,6 +22,7 @@ public class ConfirmSessionCompletionCommandHandler : IRequestHandler<ConfirmSes
         IApplicationDbContext context,
         ICurrentUserService currentUserService,
         IPointLedgerService pointLedgerService,
+        ITokenLedgerService tokenLedgerService,
         ITransactionExecutor transactionExecutor,
         IDateTimeProvider dateTimeProvider,
         ISystemConfigService systemConfigService)
@@ -29,6 +30,7 @@ public class ConfirmSessionCompletionCommandHandler : IRequestHandler<ConfirmSes
         _context = context;
         _currentUserService = currentUserService;
         _pointLedgerService = pointLedgerService;
+        _tokenLedgerService = tokenLedgerService;
         _transactionExecutor = transactionExecutor;
         _dateTimeProvider = dateTimeProvider;
         _systemConfigService = systemConfigService;
@@ -58,7 +60,7 @@ public class ConfirmSessionCompletionCommandHandler : IRequestHandler<ConfirmSes
 
             if (session.Status != SessionStatus.PendingReview)
             {
-                return Result<SessionDto>.Failure("SESSION_INVALID_STATUS", "Hành động không hợp lệ với trạng thái hiện tại.");
+                return Result<SessionDto>.Failure("SESSION_INVALID_STATUS", "Hanh dong khong hop le voi trang thai hien tai.");
             }
 
             var minDuration = await _systemConfigService.GetIntValueAsync(SystemConfigKeys.SessionMinDurationMinutes, ct);
@@ -84,14 +86,37 @@ public class ConfirmSessionCompletionCommandHandler : IRequestHandler<ConfirmSes
                     return Result<SessionDto>.Failure("SESSION_INVALID_STATUS", "Session does not have a learner.");
                 }
 
-                var platformFeePct = await _systemConfigService.GetIntValueAsync(SystemConfigKeys.PointPlatformFeePct, ct);
-                var companionAmount = session.PointCost * (100 - platformFeePct) / 100;
-                var platformAmount = session.PointCost - companionAmount;
+                var learnerChargePoints = session.PricingModel == SessionPricingModel.FormulaV1
+                    ? session.LearnerChargePoints ?? 0
+                    : session.PointCost;
+                if (learnerChargePoints <= 0)
+                {
+                    return Result<SessionDto>.Failure("SESSION_INVALID_STATUS", "Session pricing is invalid.");
+                }
+
+                int companionAmount;
+                int platformAmount;
+                if (session.PricingModel == SessionPricingModel.FormulaV1)
+                {
+                    if (!session.CompanionPayoutPoints.HasValue || !session.PlatformFeePoints.HasValue)
+                    {
+                        return Result<SessionDto>.Failure("SESSION_INVALID_STATUS", "Session pricing snapshot is missing.");
+                    }
+
+                    companionAmount = session.CompanionPayoutPoints.Value;
+                    platformAmount = session.PlatformFeePoints.Value;
+                }
+                else
+                {
+                    var platformFeePct = await _systemConfigService.GetIntValueAsync(SystemConfigKeys.PointPlatformFeePct, ct);
+                    companionAmount = session.PointCost * (100 - platformFeePct) / 100;
+                    platformAmount = session.PointCost - companionAmount;
+                }
 
                 var learnerWallet = await _pointLedgerService.GetOrCreateWalletAsync(session.LearnerId.Value, ct);
                 var paymentResult = _pointLedgerService.CompleteSessionPayment(
                     learnerWallet,
-                    session.PointCost,
+                    learnerChargePoints,
                     session.SessionId,
                     "Session completed.");
                 if (!paymentResult.IsSuccess)
@@ -134,6 +159,12 @@ public class ConfirmSessionCompletionCommandHandler : IRequestHandler<ConfirmSes
                 {
                     learnerProfile.TotalSessions += 1;
                     learnerProfile.UpdatedAt = _dateTimeProvider.UtcNow;
+                }
+
+                var tokenResult = await _tokenLedgerService.AwardSessionCompletionTokensAsync(session, ct);
+                if (!tokenResult.IsSuccess)
+                {
+                    return Result<SessionDto>.Failure(tokenResult.ErrorCode!, tokenResult.ErrorMessage!);
                 }
 
                 session.Status = SessionStatus.Completed;

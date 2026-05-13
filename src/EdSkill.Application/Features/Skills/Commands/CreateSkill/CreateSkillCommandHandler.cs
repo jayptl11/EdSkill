@@ -49,6 +49,7 @@ public class CreateSkillCommandHandler : IRequestHandler<CreateSkillCommand, Res
             Name = name,
             Slug = slug,
             Category = category,
+            BasePointCost = request.BasePointCost,
             Aliases = aliases,
             IsActive = true,
             CreatedAt = DateTime.UtcNow,

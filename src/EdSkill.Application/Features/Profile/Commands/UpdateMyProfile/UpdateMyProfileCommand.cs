@@ -15,6 +15,8 @@ public record UpdateMyProfileCommand(
     string? Phone,
     bool HasDegreeUrl,
     string? DegreeUrl,
+    bool HasCredentialUrls,
+    IReadOnlyCollection<string>? CredentialUrls,
     bool HasSkillsToTeach,
     IReadOnlyCollection<string>? SkillsToTeach,
     bool HasSkillsToLearn,

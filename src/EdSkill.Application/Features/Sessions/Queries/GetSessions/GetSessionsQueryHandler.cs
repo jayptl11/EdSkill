@@ -1,7 +1,7 @@
 using EdSkill.Application.Common.Interfaces;
 using EdSkill.Application.Common.Models;
-using EdSkill.Application.Features.Sessions;
 using EdSkill.Application.Features.Sessions.DTOs;
+using EdSkill.Domain.Entities;
 using EdSkill.Domain.Enums;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -12,11 +12,16 @@ public class GetSessionsQueryHandler : IRequestHandler<GetSessionsQuery, Result<
 {
     private readonly IApplicationDbContext _context;
     private readonly ICurrentUserService _currentUserService;
+    private readonly ISessionPricingService _sessionPricingService;
 
-    public GetSessionsQueryHandler(IApplicationDbContext context, ICurrentUserService currentUserService)
+    public GetSessionsQueryHandler(
+        IApplicationDbContext context,
+        ICurrentUserService currentUserService,
+        ISessionPricingService sessionPricingService)
     {
         _context = context;
         _currentUserService = currentUserService;
+        _sessionPricingService = sessionPricingService;
     }
 
     public async Task<Result<SessionListDto>> Handle(GetSessionsQuery request, CancellationToken cancellationToken)
@@ -57,8 +62,47 @@ public class GetSessionsQueryHandler : IRequestHandler<GetSessionsQuery, Result<
             .Take(request.Limit)
             .ToListAsync(cancellationToken);
 
+        var formulaPreviewSessions = sessions
+            .Where(session => session.PricingModel == SessionPricingModel.FormulaV1
+                && (!session.LearnerChargePoints.HasValue || !session.CompanionPayoutPoints.HasValue || !session.PlatformFeePoints.HasValue))
+            .ToList();
+
+        var skillIds = formulaPreviewSessions
+            .Where(session => session.SkillId.HasValue)
+            .Select(session => session.SkillId!.Value)
+            .Distinct()
+            .ToList();
+        var companionIds = formulaPreviewSessions
+            .Select(session => session.CompanionId)
+            .Distinct()
+            .ToList();
+
+        var skills = skillIds.Count == 0
+            ? new List<Skill>()
+            : await _context.Skills
+                .AsNoTracking()
+                .Where(item => skillIds.Contains(item.SkillId) && item.IsActive && !item.IsDeleted)
+                .ToListAsync(cancellationToken);
+        var profiles = companionIds.Count == 0
+            ? new List<UserProfile>()
+            : await _context.UserProfiles
+                .AsNoTracking()
+                .Where(item => companionIds.Contains(item.UserId))
+                .ToListAsync(cancellationToken);
+
+        var skillLookup = skills.ToDictionary(item => item.SkillId);
+        var profileLookup = profiles.ToDictionary(item => item.UserId);
+        var platformMarkupPct = formulaPreviewSessions.Count == 0
+            ? (int?)null
+            : await _sessionPricingService.GetPlatformMarkupPctAsync(cancellationToken);
+
         return Result<SessionListDto>.Success(new SessionListDto(
-            sessions.Select(SessionDtoMapper.Map).ToList(),
+            sessions.Select(session =>
+            {
+                skillLookup.TryGetValue(session.SkillId ?? Guid.Empty, out var skill);
+                profileLookup.TryGetValue(session.CompanionId, out var companionProfile);
+                return SessionDtoMapper.Map(session, skill, companionProfile, platformMarkupPct);
+            }).ToList(),
             total,
             request.Page,
             request.Limit));

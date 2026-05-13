@@ -30,7 +30,8 @@ public class UpdateSkillCommandHandlerTests
                 Name = "Speaking",
                 Slug = "speaking",
                 Category = "Communication",
-                Aliases = new List<string> { "Tiếng Anh" },
+                BasePointCost = 100,
+                Aliases = new List<string> { "Tieng Anh" },
                 IsActive = true
             }
         };
@@ -43,7 +44,8 @@ public class UpdateSkillCommandHandlerTests
             true, "Presentation",
             false, null,
             true, "Communication",
-            true, new[] { "Thuyết trình" },
+            true, 140,
+            true, new[] { "Thuyet trinh" },
             true, false);
 
         var result = await _handler.Handle(command, CancellationToken.None);
@@ -51,7 +53,8 @@ public class UpdateSkillCommandHandlerTests
         result.IsSuccess.Should().BeTrue();
         skills[0].Name.Should().Be("Presentation");
         skills[0].Slug.Should().Be("speaking");
-        skills[0].Aliases.Should().BeEquivalentTo("Thuyết trình");
+        skills[0].BasePointCost.Should().Be(140);
+        skills[0].Aliases.Should().BeEquivalentTo("Thuyet trinh");
         skills[0].IsActive.Should().BeFalse();
     }
 
@@ -66,6 +69,7 @@ public class UpdateSkillCommandHandlerTests
                 SkillId = skillId,
                 Name = "Speaking",
                 Slug = "speaking",
+                BasePointCost = 100,
                 IsActive = true
             },
             new()
@@ -73,6 +77,7 @@ public class UpdateSkillCommandHandlerTests
                 SkillId = Guid.NewGuid(),
                 Name = "Excel",
                 Slug = "excel",
+                BasePointCost = 90,
                 IsActive = true
             }
         };
@@ -83,6 +88,7 @@ public class UpdateSkillCommandHandlerTests
             skillId,
             false, null,
             true, "excel",
+            false, null,
             false, null,
             false, null,
             false, null);

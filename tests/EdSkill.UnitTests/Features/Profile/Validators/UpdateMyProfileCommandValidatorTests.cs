@@ -22,16 +22,7 @@ public class UpdateMyProfileCommandValidatorTests
     [Fact]
     public void Validate_WhenDisplayNameContainsUnsupportedCharacters_ShouldHaveError()
     {
-        var command = new UpdateMyProfileCommand(
-            true, "John@Doe",
-            false, null,
-            false, null,
-            false, null,
-            false, null,
-            false, null,
-            false, null,
-            false, null,
-            false, null);
+        var command = NewCommand(hasDisplayName: true, displayName: "John@Doe");
 
         var result = _validator.TestValidate(command);
 
@@ -42,16 +33,7 @@ public class UpdateMyProfileCommandValidatorTests
     [Fact]
     public void Validate_WhenPhoneFormatInvalid_ShouldHaveError()
     {
-        var command = new UpdateMyProfileCommand(
-            false, null,
-            false, null,
-            false, null,
-            true, "abc",
-            false, null,
-            false, null,
-            false, null,
-            false, null,
-            false, null);
+        var command = NewCommand(hasPhone: true, phone: "abc");
 
         var result = _validator.TestValidate(command);
 
@@ -62,16 +44,7 @@ public class UpdateMyProfileCommandValidatorTests
     [Fact]
     public void Validate_WhenSkillsContainDuplicateValues_ShouldHaveError()
     {
-        var command = new UpdateMyProfileCommand(
-            false, null,
-            false, null,
-            false, null,
-            false, null,
-            false, null,
-            true, new[] { "C#", "c#" },
-            false, null,
-            false, null,
-            false, null);
+        var command = NewCommand(hasSkillsToTeach: true, skillsToTeach: new[] { "C#", "c#" });
 
         var result = _validator.TestValidate(command);
 
@@ -82,16 +55,7 @@ public class UpdateMyProfileCommandValidatorTests
     [Fact]
     public void Validate_WhenAvatarUrlUsesConfiguredBase_ShouldNotHaveError()
     {
-        var command = new UpdateMyProfileCommand(
-            false, null,
-            false, null,
-            false, null,
-            false, null,
-            false, null,
-            false, null,
-            false, null,
-            true, "https://cdn.edskill.test/avatar/123/file.jpg",
-            false, null);
+        var command = NewCommand(hasAvatarUrl: true, avatarUrl: "https://cdn.edskill.test/avatar/123/file.jpg");
 
         var result = _validator.TestValidate(command);
 
@@ -99,21 +63,49 @@ public class UpdateMyProfileCommandValidatorTests
     }
 
     [Fact]
-    public void Validate_WhenDegreeUrlUsesConfiguredBase_ShouldNotHaveError()
+    public void Validate_WhenCredentialUrlsUseConfiguredBase_ShouldNotHaveError()
     {
-        var command = new UpdateMyProfileCommand(
-            false, null,
-            false, null,
-            false, null,
-            false, null,
-            true, "https://cdn.edskill.test/degree/123/file.pdf",
-            false, null,
-            false, null,
-            false, null,
-            false, null);
+        var command = NewCommand(
+            hasCredentialUrls: true,
+            credentialUrls: new[] { "https://cdn.edskill.test/degree/123/file.pdf", "https://cdn.edskill.test/degree/123/file-2.pdf" });
 
         var result = _validator.TestValidate(command);
 
-        result.ShouldNotHaveValidationErrorFor(x => x.DegreeUrl);
+        result.ShouldNotHaveValidationErrorFor(x => x.CredentialUrls);
+    }
+
+    private static UpdateMyProfileCommand NewCommand(
+        bool hasDisplayName = false,
+        string? displayName = null,
+        bool hasBio = false,
+        string? bio = null,
+        bool hasDateOfBirth = false,
+        DateTime? dateOfBirth = null,
+        bool hasPhone = false,
+        string? phone = null,
+        bool hasDegreeUrl = false,
+        string? degreeUrl = null,
+        bool hasCredentialUrls = false,
+        IReadOnlyCollection<string>? credentialUrls = null,
+        bool hasSkillsToTeach = false,
+        IReadOnlyCollection<string>? skillsToTeach = null,
+        bool hasSkillsToLearn = false,
+        IReadOnlyCollection<string>? skillsToLearn = null,
+        bool hasAvatarUrl = false,
+        string? avatarUrl = null,
+        bool hasIsPublic = false,
+        bool? isPublic = null)
+    {
+        return new UpdateMyProfileCommand(
+            hasDisplayName, displayName,
+            hasBio, bio,
+            hasDateOfBirth, dateOfBirth,
+            hasPhone, phone,
+            hasDegreeUrl, degreeUrl,
+            hasCredentialUrls, credentialUrls,
+            hasSkillsToTeach, skillsToTeach,
+            hasSkillsToLearn, skillsToLearn,
+            hasAvatarUrl, avatarUrl,
+            hasIsPublic, isPublic);
     }
 }

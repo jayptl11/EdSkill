@@ -21,6 +21,7 @@ namespace EdSkill.Domain.Entities
         public virtual ICollection<PolicyConsent> PolicyConsents { get; set; } = new List<PolicyConsent>();
         public virtual PointWallet? PointWallet { get; set; }
         public virtual ICollection<PointTransaction> PointTransactions { get; set; } = new List<PointTransaction>();
+        public virtual ICollection<TokenTransaction> TokenTransactions { get; set; } = new List<TokenTransaction>();
         public virtual ICollection<Session> CompanionSessions { get; set; } = new List<Session>();
         public virtual ICollection<Session> LearnerSessions { get; set; } = new List<Session>();
         public virtual ICollection<SystemConfig> UpdatedSystemConfigs { get; set; } = new List<SystemConfig>();

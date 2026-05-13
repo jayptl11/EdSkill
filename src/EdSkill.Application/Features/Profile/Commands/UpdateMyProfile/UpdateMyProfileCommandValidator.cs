@@ -8,6 +8,7 @@ public partial class UpdateMyProfileCommandValidator : AbstractValidator<UpdateM
 {
     private const int MaxSkillsPerList = 20;
     private const int MaxSkillLength = 50;
+    private const int MaxCredentials = 10;
 
     public UpdateMyProfileCommandValidator(IObjectStorageService objectStorageService)
     {
@@ -87,6 +88,14 @@ public partial class UpdateMyProfileCommandValidator : AbstractValidator<UpdateM
                 .WithErrorCode("INVALID_DEGREE_URL");
         });
 
+        When(x => x.HasCredentialUrls, () =>
+        {
+            RuleFor(x => x.CredentialUrls)
+                .Must(urls => HaveValidCredentialUrls(urls, objectStorageService))
+                .WithMessage("Credential URLs are invalid")
+                .WithErrorCode("INVALID_CREDENTIAL_URLS");
+        });
+
         When(x => x.HasIsPublic, () =>
         {
             RuleFor(x => x.IsPublic)
@@ -118,6 +127,36 @@ public partial class UpdateMyProfileCommandValidator : AbstractValidator<UpdateM
 
             var trimmed = skill.Trim();
             if (trimmed.Length > MaxSkillLength || !normalized.Add(trimmed))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private static bool HaveValidCredentialUrls(IReadOnlyCollection<string>? urls, IObjectStorageService objectStorageService)
+    {
+        if (urls is null)
+        {
+            return true;
+        }
+
+        if (urls.Count > MaxCredentials)
+        {
+            return false;
+        }
+
+        var normalized = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var url in urls)
+        {
+            if (string.IsNullOrWhiteSpace(url))
+            {
+                return false;
+            }
+
+            var trimmed = url.Trim();
+            if (!objectStorageService.IsPublicUrl(trimmed) || !normalized.Add(trimmed))
             {
                 return false;
             }

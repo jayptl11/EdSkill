@@ -1,11 +1,12 @@
+using EdSkill.Application.Common.Interfaces;
 using EdSkill.Application.Common.Models;
 using EdSkill.Application.Features.Companions.DTOs;
 using EdSkill.Application.Features.Sessions;
+using EdSkill.Application.Features.Sessions.DTOs;
 using EdSkill.Domain.Entities;
 using EdSkill.Domain.Enums;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
-using EdSkill.Application.Common.Interfaces;
 
 namespace EdSkill.Application.Features.Companions.Queries.SearchCompanions;
 
@@ -13,11 +14,16 @@ public class SearchCompanionsQueryHandler : IRequestHandler<SearchCompanionsQuer
 {
     private readonly IApplicationDbContext _context;
     private readonly ICurrentUserService _currentUserService;
+    private readonly ISessionPricingService _sessionPricingService;
 
-    public SearchCompanionsQueryHandler(IApplicationDbContext context, ICurrentUserService currentUserService)
+    public SearchCompanionsQueryHandler(
+        IApplicationDbContext context,
+        ICurrentUserService currentUserService,
+        ISessionPricingService sessionPricingService)
     {
         _context = context;
         _currentUserService = currentUserService;
+        _sessionPricingService = sessionPricingService;
     }
 
     public async Task<Result<CompanionSearchResultDto>> Handle(SearchCompanionsQuery request, CancellationToken cancellationToken)
@@ -37,23 +43,12 @@ public class SearchCompanionsQueryHandler : IRequestHandler<SearchCompanionsQuer
             .OrderBy(session => session.ScheduledAt)
             .ToList();
 
-        var sessionStats = filteredSessions
-            .GroupBy(session => session.CompanionId)
-            .ToDictionary(
-                group => group.Key,
-                group => new
-                {
-                    MatchingSessionCount = group.Count(),
-                    LowestPointCost = group.Min(item => item.PointCost),
-                    NextScheduledAt = group.Min(item => item.ScheduledAt)
-                });
-
-        if (sessionStats.Count == 0)
+        if (filteredSessions.Count == 0)
         {
             return Result<CompanionSearchResultDto>.Success(new CompanionSearchResultDto([], 0, request.Page, request.Limit));
         }
 
-        var companionIds = sessionStats.Keys.ToList();
+        var companionIds = filteredSessions.Select(session => session.CompanionId).Distinct().ToList();
         var companions = await _context.Users
             .AsNoTracking()
             .Include(user => user.UserProfile)
@@ -62,7 +57,42 @@ public class SearchCompanionsQueryHandler : IRequestHandler<SearchCompanionsQuer
             .Where(user => companionIds.Contains(user.UserId))
             .ToListAsync(cancellationToken);
 
+        var companionLookup = companions
+            .Where(user => user.UserProfile != null)
+            .ToDictionary(user => user.UserId, user => user.UserProfile!);
         var reviewStats = await LoadReviewStatsAsync(companionIds, cancellationToken);
+        var platformMarkupPct = filteredSessions.Any(session => session.PricingModel == SessionPricingModel.FormulaV1)
+            ? await _sessionPricingService.GetPlatformMarkupPctAsync(cancellationToken)
+            : (int?)null;
+
+        var sessionStats = filteredSessions
+            .GroupBy(session => session.CompanionId)
+            .ToDictionary(
+                group => group.Key,
+                group =>
+                {
+                    var previews = group
+                        .Select(session =>
+                        {
+                            companionLookup.TryGetValue(session.CompanionId, out var profile);
+                            return SessionDtoMapper.BuildPricingPreview(session, skill, profile, platformMarkupPct);
+                        })
+                        .ToList();
+
+                    return new
+                    {
+                        MatchingSessionCount = group.Count(),
+                        LowestPointCost = previews.Min(item => item.MinLearnerChargePoints),
+                        PricingPreview = new SessionPricingPreviewDto(
+                            previews.Min(item => item.MinCompanionPayoutPoints),
+                            previews.Max(item => item.MaxCompanionPayoutPoints),
+                            previews.Min(item => item.MinLearnerChargePoints),
+                            previews.Max(item => item.MaxLearnerChargePoints),
+                            previews.Min(item => item.MinPlatformFeePoints),
+                            previews.Max(item => item.MaxPlatformFeePoints)),
+                        NextScheduledAt = group.Min(item => item.ScheduledAt)
+                    };
+                });
 
         var items = companions
             .Where(user =>
@@ -87,6 +117,7 @@ public class SearchCompanionsQueryHandler : IRequestHandler<SearchCompanionsQuer
                     review.TotalReviews,
                     stats.MatchingSessionCount,
                     stats.LowestPointCost,
+                    stats.PricingPreview,
                     stats.NextScheduledAt);
             })
             .OrderBy(item => item.NextScheduledAt)

@@ -24,6 +24,11 @@ public class CreateSkillCommandValidator : AbstractValidator<CreateSkillCommand>
             .WithMessage("Skill category must not exceed 100 characters")
             .WithErrorCode("INVALID_SKILL_CATEGORY");
 
+        RuleFor(x => x.BasePointCost)
+            .GreaterThan(0)
+            .WithMessage("Skill base point cost must be greater than zero")
+            .WithErrorCode("INVALID_SKILL_BASE_POINTS");
+
         RuleFor(x => x.Aliases)
             .Must(aliases => aliases is null || aliases.Count <= 20)
             .WithMessage("Skill aliases must not exceed 20 items")

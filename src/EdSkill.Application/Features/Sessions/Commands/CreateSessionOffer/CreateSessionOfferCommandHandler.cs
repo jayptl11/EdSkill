@@ -1,7 +1,8 @@
 using EdSkill.Application.Common.Interfaces;
 using EdSkill.Application.Common.Models;
+using EdSkill.Application.Common.Services;
+using EdSkill.Application.Common.System;
 using EdSkill.Application.Features.Profile;
-using EdSkill.Application.Features.Sessions;
 using EdSkill.Application.Features.Sessions.DTOs;
 using EdSkill.Domain.Entities;
 using EdSkill.Domain.Enums;
@@ -16,6 +17,7 @@ public class CreateSessionOfferCommandHandler : IRequestHandler<CreateSessionOff
     private readonly ICurrentUserService _currentUserService;
     private readonly IDateTimeProvider _dateTimeProvider;
     private readonly ISystemConfigService _systemConfigService;
+    private readonly ISessionPricingService _sessionPricingService;
     private readonly ITransactionExecutor _transactionExecutor;
 
     public CreateSessionOfferCommandHandler(
@@ -23,12 +25,14 @@ public class CreateSessionOfferCommandHandler : IRequestHandler<CreateSessionOff
         ICurrentUserService currentUserService,
         IDateTimeProvider dateTimeProvider,
         ISystemConfigService systemConfigService,
+        ISessionPricingService sessionPricingService,
         ITransactionExecutor transactionExecutor)
     {
         _context = context;
         _currentUserService = currentUserService;
         _dateTimeProvider = dateTimeProvider;
         _systemConfigService = systemConfigService;
+        _sessionPricingService = sessionPricingService;
         _transactionExecutor = transactionExecutor;
     }
 
@@ -62,7 +66,7 @@ public class CreateSessionOfferCommandHandler : IRequestHandler<CreateSessionOff
                 return Result<SessionDto>.Failure("COMPANION_PROFILE_INCOMPLETE", "Companion profile is incomplete.");
             }
 
-            var maxPerDay = await _systemConfigService.GetIntValueAsync(Common.System.SystemConfigKeys.SessionMaxPerDayPerCompanion, ct);
+            var maxPerDay = await _systemConfigService.GetIntValueAsync(SystemConfigKeys.SessionMaxPerDayPerCompanion, ct);
             var startDay = request.ScheduledAt.Date;
             var endDay = startDay.AddDays(1);
             var existingCount = await _context.Sessions.CountAsync(
@@ -85,26 +89,66 @@ public class CreateSessionOfferCommandHandler : IRequestHandler<CreateSessionOff
                 return Result<SessionDto>.Failure("SKILL_NOT_FOUND", "Skill was not found.");
             }
 
+            var durationOptions = SessionPricingService.NormalizeDurations(request.DurationOptions);
+            if (durationOptions.Count == 0)
+            {
+                return Result<SessionDto>.Failure("INVALID_DURATION_OPTIONS", "Duration options are invalid.");
+            }
+
+            var bufferMinutes = await _systemConfigService.GetIntValueAsync(SystemConfigKeys.SessionBufferMinutes, ct);
+            var reservedDurationMinutes = durationOptions.Max();
+            var requestedStart = request.ScheduledAt;
+            var requestedEnd = requestedStart.AddMinutes(reservedDurationMinutes);
+
+            var companionSessions = await _context.Sessions
+                .Where(item => item.CompanionId == companionId && item.Status != SessionStatus.Cancelled)
+                .ToListAsync(ct);
+            var hasConflict = companionSessions.Any(existing =>
+            {
+                var existingEnd = existing.ScheduledAt.AddMinutes(existing.DurationMinutes);
+                return requestedStart < existingEnd.AddMinutes(bufferMinutes)
+                    && existing.ScheduledAt < requestedEnd.AddMinutes(bufferMinutes);
+            });
+
+            if (hasConflict)
+            {
+                return Result<SessionDto>.Failure("SESSION_TIME_CONFLICT", "Session time conflicts with an existing session.");
+            }
+
             var session = new Session
             {
                 SessionId = Guid.NewGuid(),
                 CompanionId = companionId,
+                SkillId = skill.SkillId,
                 Skill = skill.Name,
                 Description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim(),
                 DeliveryMode = request.DeliveryMode,
                 Location = request.DeliveryMode == SessionDeliveryMode.Offline
                     ? request.Location!.Trim()
                     : null,
-                DurationMinutes = request.DurationMinutes,
-                PointCost = request.PointCost,
+                DurationMinutes = reservedDurationMinutes,
+                PricingModel = SessionPricingModel.FormulaV1,
+                DurationOptions = durationOptions.ToList(),
+                PointCost = 0,
                 ScheduledAt = request.ScheduledAt,
                 Status = SessionStatus.Available,
                 CreatedAt = _dateTimeProvider.UtcNow,
                 UpdatedAt = _dateTimeProvider.UtcNow
             };
 
+            var platformMarkupPct = await _sessionPricingService.GetPlatformMarkupPctAsync(ct);
+            var previewResult = _sessionPricingService.BuildOfferPreview(
+                skill,
+                CompanionCredentialRules.GetCredentialCount(companion.UserProfile),
+                durationOptions,
+                platformMarkupPct);
+            if (!previewResult.IsSuccess)
+            {
+                return Result<SessionDto>.Failure(previewResult.ErrorCode!, previewResult.ErrorMessage!);
+            }
+
             await _context.Sessions.AddAsync(session, ct);
-            return Result<SessionDto>.Success(SessionDtoMapper.Map(session));
+            return Result<SessionDto>.Success(SessionDtoMapper.Map(session, skill, companion.UserProfile, platformMarkupPct));
         }, cancellationToken);
     }
 }

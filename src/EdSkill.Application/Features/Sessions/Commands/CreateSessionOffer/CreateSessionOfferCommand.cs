@@ -10,6 +10,5 @@ public record CreateSessionOfferCommand(
     string? Description,
     SessionDeliveryMode DeliveryMode,
     string? Location,
-    int DurationMinutes,
-    int PointCost,
+    IReadOnlyCollection<int> DurationOptions,
     DateTime ScheduledAt) : IRequest<Result<SessionDto>>;

@@ -12,6 +12,8 @@ public record UpdateSkillCommand(
     string? Slug,
     bool HasCategory,
     string? Category,
+    bool HasBasePointCost,
+    int? BasePointCost,
     bool HasAliases,
     IReadOnlyCollection<string>? Aliases,
     bool HasIsActive,

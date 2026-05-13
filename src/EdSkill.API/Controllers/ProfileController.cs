@@ -53,6 +53,8 @@ public class ProfileController : ControllerBase
             request.Phone,
             request.HasDegreeUrl,
             request.DegreeUrl,
+            request.HasCredentialUrls,
+            request.CredentialUrls,
             request.HasSkillsToTeach,
             request.SkillsToTeach,
             request.HasSkillsToLearn,
@@ -72,6 +74,18 @@ public class ProfileController : ControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
     public async Task<IActionResult> GenerateDegreeUploadUrl([FromBody] GenerateDegreeUploadUrlRequest request, CancellationToken cancellationToken)
+    {
+        var command = new GenerateDegreeUploadUrlCommand(request.FileName, request.ContentType, request.FileSize);
+        var result = await _sender.Send(command, cancellationToken);
+        return ToActionResult(result);
+    }
+
+    [Authorize]
+    [HttpPost("me/credential-upload-url")]
+    [ProducesResponseType(typeof(DegreeUploadUrlDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
+    public async Task<IActionResult> GenerateCredentialUploadUrl([FromBody] GenerateDegreeUploadUrlRequest request, CancellationToken cancellationToken)
     {
         var command = new GenerateDegreeUploadUrlCommand(request.FileName, request.ContentType, request.FileSize);
         var result = await _sender.Send(command, cancellationToken);

@@ -30,6 +30,7 @@ namespace EdSkill.Infrastructure.Persistence
         public DbSet<Skill> Skills => Set<Skill>();
         public DbSet<UserSkill> UserSkills => Set<UserSkill>();
         public DbSet<Review> Reviews => Set<Review>();
+        public DbSet<TokenTransaction> TokenTransactions => Set<TokenTransaction>();
         public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
         public DbSet<TokenBlacklist> TokenBlacklist => Set<TokenBlacklist>();
 
@@ -49,6 +50,7 @@ namespace EdSkill.Infrastructure.Persistence
             modelBuilder.Entity<Skill>().HasKey(e => e.SkillId);
             modelBuilder.Entity<UserSkill>().HasKey(e => e.UserSkillId);
             modelBuilder.Entity<Review>().HasKey(e => e.ReviewId);
+            modelBuilder.Entity<TokenTransaction>().HasKey(e => e.TokenTransactionId);
             modelBuilder.Entity<RefreshToken>().HasKey(e => e.TokenId);
             modelBuilder.Entity<TokenBlacklist>().HasKey(e => e.Id);
 
@@ -61,6 +63,16 @@ namespace EdSkill.Infrastructure.Persistence
                 values => (values ?? new List<string>())
                     .Aggregate(0, (hash, value) => HashCode.Combine(hash, value.GetHashCode())),
                 values => (values ?? new List<string>()).ToList());
+
+            var intListConverter = new ValueConverter<List<int>, string>(
+                values => JsonSerializer.Serialize(values, (JsonSerializerOptions?)null),
+                values => JsonSerializer.Deserialize<List<int>>(values, (JsonSerializerOptions?)null) ?? new List<int>());
+
+            var intListComparer = new ValueComparer<List<int>>(
+                (left, right) => (left ?? new List<int>()).SequenceEqual(right ?? new List<int>()),
+                values => (values ?? new List<int>())
+                    .Aggregate(0, (hash, value) => HashCode.Combine(hash, value.GetHashCode())),
+                values => (values ?? new List<int>()).ToList());
 
             foreach (var entityType in modelBuilder.Model.GetEntityTypes())
             {
@@ -126,6 +138,11 @@ namespace EdSkill.Infrastructure.Persistence
                     .HasForeignKey(transaction => transaction.UserId)
                     .OnDelete(DeleteBehavior.Restrict);
 
+                entity.HasMany(u => u.TokenTransactions)
+                    .WithOne(transaction => transaction.User)
+                    .HasForeignKey(transaction => transaction.UserId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
                 entity.HasMany(u => u.CompanionSessions)
                     .WithOne(session => session.Companion)
                     .HasForeignKey(session => session.CompanionId)
@@ -154,6 +171,11 @@ namespace EdSkill.Infrastructure.Persistence
                     .HasMaxLength(2048);
                 entity.Property(p => p.DegreeUrl)
                     .HasMaxLength(2048);
+                entity.Property(p => p.CredentialUrls)
+                    .HasConversion(stringListConverter)
+                    .HasColumnType("nvarchar(max)")
+                    .HasDefaultValueSql("N'[]'")
+                    .Metadata.SetValueComparer(stringListComparer);
                 entity.Property(p => p.Phone)
                     .HasMaxLength(50);
                 entity.Property(p => p.Address)
@@ -231,6 +253,15 @@ namespace EdSkill.Infrastructure.Persistence
                     .HasConversion<string>()
                     .HasMaxLength(32)
                     .HasDefaultValue(Domain.Enums.SessionDeliveryMode.Online);
+                entity.Property(session => session.PricingModel)
+                    .HasConversion<string>()
+                    .HasMaxLength(32)
+                    .HasDefaultValue(Domain.Enums.SessionPricingModel.LegacyManual);
+                entity.Property(session => session.DurationOptions)
+                    .HasConversion(intListConverter)
+                    .HasColumnType("nvarchar(max)")
+                    .HasDefaultValueSql("N'[]'")
+                    .Metadata.SetValueComparer(intListComparer);
                 entity.Property(session => session.Location).HasMaxLength(500);
                 entity.Property(session => session.Status)
                     .HasConversion<string>()
@@ -240,6 +271,7 @@ namespace EdSkill.Infrastructure.Persistence
                 entity.Property(session => session.CreatedAt).HasDefaultValueSql("GETUTCDATE()");
                 entity.Property(session => session.UpdatedAt).HasDefaultValueSql("GETUTCDATE()");
                 entity.HasIndex(session => new { session.CompanionId, session.ScheduledAt });
+                entity.HasIndex(session => session.SkillId);
                 entity.HasIndex(session => session.Status);
             });
 
@@ -322,6 +354,8 @@ namespace EdSkill.Infrastructure.Persistence
                     .IsRequired();
                 entity.Property(s => s.Category)
                     .HasMaxLength(100);
+                entity.Property(s => s.BasePointCost)
+                    .HasDefaultValue(0);
                 entity.Property(s => s.Aliases)
                     .HasConversion(stringListConverter)
                     .HasColumnType("nvarchar(max)")
@@ -362,6 +396,25 @@ namespace EdSkill.Infrastructure.Persistence
                 entity.HasOne(review => review.Session)
                     .WithMany()
                     .HasForeignKey(review => review.SessionId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<TokenTransaction>(entity =>
+            {
+                entity.Property(transaction => transaction.Type)
+                    .HasConversion<string>()
+                    .HasMaxLength(64);
+                entity.Property(transaction => transaction.Amount).HasPrecision(18, 2);
+                entity.Property(transaction => transaction.BalanceBefore).HasPrecision(18, 2);
+                entity.Property(transaction => transaction.BalanceAfter).HasPrecision(18, 2);
+                entity.Property(transaction => transaction.Note).HasMaxLength(500);
+                entity.Property(transaction => transaction.CreatedAt).HasDefaultValueSql("GETUTCDATE()");
+                entity.HasIndex(transaction => new { transaction.UserId, transaction.CreatedAt });
+                entity.HasIndex(transaction => new { transaction.SessionId, transaction.CreatedAt });
+
+                entity.HasOne(transaction => transaction.Session)
+                    .WithMany()
+                    .HasForeignKey(transaction => transaction.SessionId)
                     .OnDelete(DeleteBehavior.Restrict);
             });
         }

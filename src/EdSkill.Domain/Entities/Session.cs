@@ -9,12 +9,22 @@ public class Session
     public virtual User Companion { get; set; } = null!;
     public Guid? LearnerId { get; set; }
     public virtual User? Learner { get; set; }
+    public Guid? SkillId { get; set; }
     public string Skill { get; set; } = string.Empty;
     public string? Description { get; set; }
     public SessionDeliveryMode DeliveryMode { get; set; } = SessionDeliveryMode.Online;
     public string? Location { get; set; }
     public int DurationMinutes { get; set; }
     public int PointCost { get; set; }
+    public SessionPricingModel PricingModel { get; set; } = SessionPricingModel.LegacyManual;
+    public List<int> DurationOptions { get; set; } = new();
+    public int? SelectedDurationMinutes { get; set; }
+    public int? CompanionPayoutPoints { get; set; }
+    public int? LearnerChargePoints { get; set; }
+    public int? PlatformFeePoints { get; set; }
+    public int? SkillBasePointsSnapshot { get; set; }
+    public int? CredentialBonusPointsSnapshot { get; set; }
+    public int? DurationMultiplierPercentSnapshot { get; set; }
     public DateTime ScheduledAt { get; set; }
     public SessionStatus Status { get; set; } = SessionStatus.Available;
     public string? JitsiRoomId { get; set; }

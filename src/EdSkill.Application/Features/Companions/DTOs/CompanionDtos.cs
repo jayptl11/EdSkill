@@ -12,6 +12,7 @@ public record CompanionSearchItemDto(
     int TotalReviews,
     int MatchingSessionCount,
     int LowestPointCost,
+    SessionPricingPreviewDto PricingPreview,
     DateTime NextScheduledAt
 );
 

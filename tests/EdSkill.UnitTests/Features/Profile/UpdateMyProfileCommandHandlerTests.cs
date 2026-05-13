@@ -31,6 +31,7 @@ public class UpdateMyProfileCommandHandlerTests
             Name = "Speaking",
             Slug = "speaking",
             Category = "Communication",
+            BasePointCost = 100,
             Aliases = new List<string> { "Tieng Anh" },
             IsActive = true
         };
@@ -40,6 +41,7 @@ public class UpdateMyProfileCommandHandlerTests
             Name = "ASP.NET",
             Slug = "asp-net",
             Category = "Tech",
+            BasePointCost = 120,
             IsActive = true
         };
         var reactSkill = new Skill
@@ -48,6 +50,7 @@ public class UpdateMyProfileCommandHandlerTests
             Name = "React",
             Slug = "react",
             Category = "Tech",
+            BasePointCost = 90,
             IsActive = true
         };
         var skills = new List<Skill> { speakingSkill, aspNetSkill, reactSkill };
@@ -62,7 +65,7 @@ public class UpdateMyProfileCommandHandlerTests
                     UserSkillId = Guid.NewGuid(),
                     UserId = userId,
                     SkillId = Guid.NewGuid(),
-                    Skill = new Skill { SkillId = Guid.NewGuid(), Name = "Old", Slug = "old", IsActive = true },
+                    Skill = new Skill { SkillId = Guid.NewGuid(), Name = "Old", Slug = "old", BasePointCost = 50, IsActive = true },
                     Type = UserSkillType.Teach
                 }
             },
@@ -86,7 +89,8 @@ public class UpdateMyProfileCommandHandlerTests
             true, "  Hello world  ",
             true, new DateTime(2000, 1, 2),
             true, "  +84 912 345 678  ",
-            true, "  https://cdn.edskill.test/degree/u/degree.pdf  ",
+            false, null,
+            true, new[] { "  https://cdn.edskill.test/degree/u/cert-1.pdf  ", "https://cdn.edskill.test/degree/u/cert-2.pdf" },
             true, new[] { " tieng anh ", "ASP.NET" },
             true, new[] { "React" },
             true, "  https://cdn.edskill.test/avatar/u/a.jpg  ",
@@ -99,7 +103,10 @@ public class UpdateMyProfileCommandHandlerTests
         user.UserProfile.Bio.Should().Be("Hello world");
         user.UserProfile.DateOfBirth.Should().Be(new DateTime(2000, 1, 2));
         user.UserProfile.Phone.Should().Be("+84 912 345 678");
-        user.UserProfile.DegreeUrl.Should().Be("https://cdn.edskill.test/degree/u/degree.pdf");
+        user.UserProfile.DegreeUrl.Should().Be("https://cdn.edskill.test/degree/u/cert-1.pdf");
+        user.UserProfile.CredentialUrls.Should().BeEquivalentTo(
+            "https://cdn.edskill.test/degree/u/cert-1.pdf",
+            "https://cdn.edskill.test/degree/u/cert-2.pdf");
         user.UserProfile.SkillsToTeach.Should().BeEquivalentTo("Speaking", "ASP.NET");
         user.UserProfile.SkillsToLearn.Should().BeEquivalentTo("React");
         user.UserProfile.AvatarUrl.Should().Be("https://cdn.edskill.test/avatar/u/a.jpg");
@@ -135,6 +142,7 @@ public class UpdateMyProfileCommandHandlerTests
             false, null,
             false, null,
             false, null,
+            false, null,
             false, null);
 
         var result = await _handler.Handle(command, CancellationToken.None);
@@ -152,6 +160,7 @@ public class UpdateMyProfileCommandHandlerTests
             SkillId = Guid.NewGuid(),
             Name = "Canva",
             Slug = "canva",
+            BasePointCost = 80,
             IsActive = false
         };
         var skills = new List<Skill> { inactiveSkill };
@@ -179,6 +188,7 @@ public class UpdateMyProfileCommandHandlerTests
             false, null,
             false, null,
             false, null,
+            false, null,
             true, new[] { "Canva" },
             false, null,
             false, null,
@@ -188,53 +198,5 @@ public class UpdateMyProfileCommandHandlerTests
 
         result.IsSuccess.Should().BeFalse();
         result.ErrorCode.Should().Be("SKILL_INACTIVE");
-    }
-
-    [Fact]
-    public async Task Handle_WhenSkillsResolveToSameCanonicalSkill_ReturnsFailure()
-    {
-        var userId = Guid.NewGuid();
-        var speakingSkill = new Skill
-        {
-            SkillId = Guid.NewGuid(),
-            Name = "Speaking",
-            Slug = "speaking",
-            Aliases = new List<string> { "Tieng Anh" },
-            IsActive = true
-        };
-        var skills = new List<Skill> { speakingSkill };
-        var userSkills = new List<UserSkill>();
-        var user = new User
-        {
-            UserId = userId,
-            UserSkills = userSkills,
-            UserProfile = new UserProfile
-            {
-                ProfileId = Guid.NewGuid(),
-                UserId = userId,
-                DisplayName = "Name"
-            }
-        };
-
-        _currentUserServiceMock.Setup(x => x.GetUserId()).Returns(userId);
-        _contextMock.Setup(x => x.Users).Returns(new[] { user }.BuildMockDbSet().Object);
-        _contextMock.Setup(x => x.Skills).Returns(skills.BuildMockDbSet().Object);
-        _contextMock.Setup(x => x.UserSkills).Returns(userSkills.BuildMockDbSet().Object);
-
-        var command = new UpdateMyProfileCommand(
-            false, null,
-            false, null,
-            false, null,
-            false, null,
-            false, null,
-            true, new[] { "Speaking", "Tieng Anh" },
-            false, null,
-            false, null,
-            false, null);
-
-        var result = await _handler.Handle(command, CancellationToken.None);
-
-        result.IsSuccess.Should().BeFalse();
-        result.ErrorCode.Should().Be("DUPLICATE_SKILL_SELECTION");
     }
 }

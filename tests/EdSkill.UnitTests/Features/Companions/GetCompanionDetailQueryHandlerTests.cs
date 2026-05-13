@@ -24,6 +24,7 @@ public class GetCompanionDetailQueryHandlerTests
             SkillId = skillId,
             Name = "Speaking",
             Slug = "speaking",
+            BasePointCost = 100,
             IsActive = true
         };
 
@@ -76,6 +77,7 @@ public class GetCompanionDetailQueryHandlerTests
             {
                 SessionId = sessionId,
                 CompanionId = companionId,
+                SkillId = skillId,
                 Skill = "Speaking",
                 DeliveryMode = SessionDeliveryMode.Offline,
                 Location = "District 1",
@@ -89,6 +91,7 @@ public class GetCompanionDetailQueryHandlerTests
                 SessionId = Guid.NewGuid(),
                 CompanionId = companionId,
                 LearnerId = learnerId,
+                SkillId = skillId,
                 Skill = "Speaking",
                 DeliveryMode = SessionDeliveryMode.Online,
                 DurationMinutes = 60,
@@ -116,8 +119,9 @@ public class GetCompanionDetailQueryHandlerTests
         contextMock.SetupGet(x => x.Users).Returns(users.BuildMockDbSet().Object);
         contextMock.SetupGet(x => x.Sessions).Returns(sessions.BuildMockDbSet().Object);
         contextMock.SetupGet(x => x.Reviews).Returns(reviews.BuildMockDbSet().Object);
+        var sessionPricingServiceMock = new Mock<ISessionPricingService>();
 
-        var handler = new GetCompanionDetailQueryHandler(contextMock.Object);
+        var handler = new GetCompanionDetailQueryHandler(contextMock.Object, sessionPricingServiceMock.Object);
 
         var result = await handler.Handle(
             new GetCompanionDetailQuery(companionId, skillId, SessionDeliveryMode.Offline, "district", 1, 10),

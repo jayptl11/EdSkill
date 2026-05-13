@@ -34,6 +34,8 @@ internal static class ProfileDtoMapper
             includePrivateDetails ? profile.DateOfBirth : null,
             includePrivateDetails ? profile.Phone : null,
             includePrivateDetails ? profile.DegreeUrl : null,
+            includePrivateDetails ? profile.CredentialUrls.AsReadOnly() : Array.Empty<string>(),
+            profile.CredentialUrls.Count,
             skillsToTeach.AsReadOnly(),
             skillsToLearn.AsReadOnly(),
             profile.IsPublic,
