@@ -1,6 +1,7 @@
 using EdSkill.Application.Common.Interfaces;
 using EdSkill.Application.Common.Models;
 using EdSkill.Application.Features.Companions.DTOs;
+using EdSkill.Application.Features.Profile;
 using EdSkill.Application.Features.Sessions;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -44,19 +45,31 @@ public class GetCompanionDetailQueryHandler : IRequestHandler<GetCompanionDetail
             return Result<CompanionDetailDto>.Failure("PROFILE_PRIVATE", "This profile is private.");
         }
 
-        var sessions = (await CompanionSessionFilters
-            .ApplyAsync(
+        var candidateSessions = (await CompanionDiscoveryMatcher
+            .LoadAvailableOnlineSkillSessionsAsync(
                 _context.Sessions.AsNoTracking().Where(session => session.CompanionId == request.CompanionId),
                 skill,
-                request.DeliveryMode,
-                request.Location,
                 cancellationToken))
             .OrderBy(session => session.ScheduledAt)
             .ToList();
 
-        var platformMarkupPct = sessions.Any(session => session.PricingModel == Domain.Enums.SessionPricingModel.FormulaV1)
+        var platformMarkupPct = candidateSessions.Any(session => session.PricingModel == Domain.Enums.SessionPricingModel.FormulaV1)
             ? await _sessionPricingService.GetPlatformMarkupPctAsync(cancellationToken)
             : (int?)null;
+        var credentialCount = CompanionCredentialRules.GetCredentialCount(companion.UserProfile);
+        var matchedSessions = CompanionDiscoveryMatcher.MatchOffers(
+                candidateSessions,
+                skill,
+                new Dictionary<Guid, Domain.Entities.UserProfile> { [companion.UserId] = companion.UserProfile },
+                platformMarkupPct,
+                new CompanionDiscoveryFilters(
+                    request.MinimumDurationMinutes,
+                    request.MaxLearnerChargePoints,
+                    request.GetCredentialCountGroup()))
+            .Select(item => item.Offer)
+            .OrderBy(item => item.ScheduledAt)
+            .ThenBy(item => item.PointCost)
+            .ToList();
 
         var reviewBaseQuery =
             from review in _context.Reviews.AsNoTracking()
@@ -110,11 +123,12 @@ public class GetCompanionDetailQueryHandler : IRequestHandler<GetCompanionDetail
                 .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
                 .ToList(),
             companion.Roles.AsReadOnly(),
+            credentialCount,
             companion.UserProfile.TotalSessions,
             companion.UserProfile.LastActiveAt,
             avgRating,
             totalReviews,
             new CompanionReviewListDto(reviewDtos, totalReviews, request.ReviewPage, request.ReviewLimit),
-            sessions.Select(session => SessionDtoMapper.Map(session, skill, companion.UserProfile, platformMarkupPct)).ToList()));
+            matchedSessions));
     }
 }

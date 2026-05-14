@@ -2,7 +2,6 @@ using EdSkill.Application.Common.Models;
 using EdSkill.Application.Features.Companions.DTOs;
 using EdSkill.Application.Features.Companions.Queries.GetCompanionDetail;
 using EdSkill.Application.Features.Companions.Queries.SearchCompanions;
-using EdSkill.Domain.Enums;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
@@ -22,16 +21,21 @@ public class CompanionsController : ControllerBase
     [HttpGet("search")]
     [ProducesResponseType(typeof(CompanionSearchResultDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
     public async Task<IActionResult> Search(
-        [FromQuery] Guid skillId,
-        [FromQuery] SessionDeliveryMode? deliveryMode,
-        [FromQuery] string? location,
-        [FromQuery] int page = 1,
-        [FromQuery] int limit = 20,
+        [FromQuery] SearchCompanionsRequest request,
         CancellationToken cancellationToken = default)
     {
         var result = await _sender.Send(
-            new SearchCompanionsQuery(skillId, deliveryMode, location, page, limit),
+            new SearchCompanionsQuery(
+                request.SkillId,
+                request.MinimumDurationMinutes,
+                request.MaxLearnerChargePoints,
+                request.CredentialCountGroup,
+                request.DeliveryMode,
+                request.Location,
+                request.Page,
+                request.Limit),
             cancellationToken);
 
         return ToActionResult(result);
@@ -41,17 +45,23 @@ public class CompanionsController : ControllerBase
     [ProducesResponseType(typeof(CompanionDetailDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
     public async Task<IActionResult> GetDetail(
         Guid companionId,
-        [FromQuery] Guid skillId,
-        [FromQuery] SessionDeliveryMode? deliveryMode,
-        [FromQuery] string? location,
-        [FromQuery] int reviewPage = 1,
-        [FromQuery] int reviewLimit = 10,
+        [FromQuery] GetCompanionDetailRequest request,
         CancellationToken cancellationToken = default)
     {
         var result = await _sender.Send(
-            new GetCompanionDetailQuery(companionId, skillId, deliveryMode, location, reviewPage, reviewLimit),
+            new GetCompanionDetailQuery(
+                companionId,
+                request.SkillId,
+                request.MinimumDurationMinutes,
+                request.MaxLearnerChargePoints,
+                request.CredentialCountGroup,
+                request.DeliveryMode,
+                request.Location,
+                request.ReviewPage,
+                request.ReviewLimit),
             cancellationToken);
 
         return ToActionResult(result);
