@@ -7,6 +7,8 @@ namespace EdSkill.Application.Features.Skills;
 
 internal static partial class SkillNormalization
 {
+    public const int MaxIconKeyLength = 50;
+
     public static string NormalizeWhitespace(string value)
     {
         return MultiSpaceRegex().Replace(value.Trim(), " ");
@@ -63,6 +65,23 @@ internal static partial class SkillNormalization
             .Trim('-');
     }
 
+    public static string? NormalizeIconKey(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        return value.Trim();
+    }
+
+    public static bool IsValidIconKey(string? value)
+    {
+        return value is not null &&
+               value.Length <= MaxIconKeyLength &&
+               IconKeyRegex().IsMatch(value);
+    }
+
     public static List<string> NormalizeAliasCollection(IReadOnlyCollection<string>? aliases)
     {
         if (aliases is null || aliases.Count == 0)
@@ -110,4 +129,7 @@ internal static partial class SkillNormalization
 
     [GeneratedRegex(@"\s+", RegexOptions.Compiled)]
     private static partial Regex MultiSpaceRegex();
+
+    [GeneratedRegex(@"^[a-z0-9]+(?:-[a-z0-9]+)*$", RegexOptions.Compiled)]
+    private static partial Regex IconKeyRegex();
 }

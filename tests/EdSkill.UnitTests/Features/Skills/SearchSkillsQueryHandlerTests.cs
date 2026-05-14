@@ -29,7 +29,8 @@ public class SearchSkillsQueryHandlerTests
                 Name = "Speaking",
                 Slug = "speaking",
                 Category = "Communication",
-                Aliases = new List<string> { "Tiếng Anh" },
+                IconKey = "languages",
+                Aliases = new List<string> { "Tieng Anh" },
                 IsActive = true
             },
             new()
@@ -38,6 +39,7 @@ public class SearchSkillsQueryHandlerTests
                 Name = "Excel",
                 Slug = "excel",
                 Category = "Productivity",
+                IconKey = null,
                 IsActive = true
             },
             new()
@@ -57,5 +59,31 @@ public class SearchSkillsQueryHandlerTests
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().ContainSingle();
         result.Value!.Single().Name.Should().Be("Speaking");
+        result.Value.Single().IconKey.Should().Be("languages");
+    }
+
+    [Fact]
+    public async Task Handle_WhenSkillHasNoIcon_ReturnsNullIconKey()
+    {
+        var skills = new List<Skill>
+        {
+            new()
+            {
+                SkillId = Guid.NewGuid(),
+                Name = "Excel",
+                Slug = "excel",
+                Category = "Productivity",
+                IconKey = null,
+                IsActive = true
+            }
+        };
+
+        _contextMock.Setup(x => x.Skills).Returns(skills.BuildMockDbSet().Object);
+
+        var result = await _handler.Handle(new SearchSkillsQuery("excel", null, 10), CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Should().ContainSingle();
+        result.Value!.Single().IconKey.Should().BeNull();
     }
 }

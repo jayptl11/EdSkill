@@ -34,6 +34,9 @@ public class UpdateSkillCommandHandler : IRequestHandler<UpdateSkillCommand, Res
         var category = request.HasCategory
             ? string.IsNullOrWhiteSpace(request.Category) ? null : SkillNormalization.NormalizeWhitespace(request.Category)
             : skill.Category;
+        var iconKey = request.HasIconKey
+            ? SkillNormalization.NormalizeIconKey(request.IconKey)
+            : skill.IconKey;
         var aliases = request.HasAliases
             ? SkillNormalization.NormalizeAliasCollection(request.Aliases)
             : skill.Aliases;
@@ -57,6 +60,7 @@ public class UpdateSkillCommandHandler : IRequestHandler<UpdateSkillCommand, Res
         skill.Name = name;
         skill.Slug = slug;
         skill.Category = category;
+        skill.IconKey = iconKey;
 
         if (request.HasBasePointCost)
         {

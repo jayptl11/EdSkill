@@ -30,6 +30,7 @@ public class UpdateSkillCommandHandlerTests
                 Name = "Speaking",
                 Slug = "speaking",
                 Category = "Communication",
+                IconKey = "languages",
                 BasePointCost = 100,
                 Aliases = new List<string> { "Tieng Anh" },
                 IsActive = true
@@ -44,6 +45,7 @@ public class UpdateSkillCommandHandlerTests
             true, "Presentation",
             false, null,
             true, "Communication",
+            true, "paintbrush",
             true, 140,
             true, new[] { "Thuyet trinh" },
             true, false);
@@ -53,9 +55,11 @@ public class UpdateSkillCommandHandlerTests
         result.IsSuccess.Should().BeTrue();
         skills[0].Name.Should().Be("Presentation");
         skills[0].Slug.Should().Be("speaking");
+        skills[0].IconKey.Should().Be("paintbrush");
         skills[0].BasePointCost.Should().Be(140);
         skills[0].Aliases.Should().BeEquivalentTo("Thuyet trinh");
         skills[0].IsActive.Should().BeFalse();
+        result.Value!.IconKey.Should().Be("paintbrush");
     }
 
     [Fact]
@@ -91,11 +95,49 @@ public class UpdateSkillCommandHandlerTests
             false, null,
             false, null,
             false, null,
+            false, null,
             false, null);
 
         var result = await _handler.Handle(command, CancellationToken.None);
 
         result.IsSuccess.Should().BeFalse();
         result.ErrorCode.Should().Be("SKILL_SLUG_EXISTS");
+    }
+
+    [Fact]
+    public async Task Handle_WhenIconKeyIsWhitespace_ClearsExistingIcon()
+    {
+        var skillId = Guid.NewGuid();
+        var skills = new List<Skill>
+        {
+            new()
+            {
+                SkillId = skillId,
+                Name = "Speaking",
+                Slug = "speaking",
+                IconKey = "languages",
+                BasePointCost = 100,
+                IsActive = true
+            }
+        };
+
+        _contextMock.Setup(x => x.Skills).Returns(skills.BuildMockDbSet().Object);
+        _contextMock.Setup(x => x.SaveChangesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);
+
+        var command = new UpdateSkillCommand(
+            skillId,
+            false, null,
+            false, null,
+            false, null,
+            true, "   ",
+            false, null,
+            false, null,
+            false, null);
+
+        var result = await _handler.Handle(command, CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        skills[0].IconKey.Should().BeNull();
+        result.Value!.IconKey.Should().BeNull();
     }
 }

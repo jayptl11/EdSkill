@@ -27,7 +27,7 @@ public class SkillsController : ControllerBase
     public async Task<IActionResult> SearchSkills(
         [FromQuery(Name = "q")] string? query,
         [FromQuery] string? category,
-        [FromQuery] int limit = 20,
+        [FromQuery] int limit = 100,
         CancellationToken cancellationToken = default)
     {
         var result = await _sender.Send(new SearchSkillsQuery(query, category, limit), cancellationToken);
@@ -68,7 +68,7 @@ public class AdminSkillsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
     public async Task<IActionResult> CreateSkill([FromBody] CreateSkillRequest request, CancellationToken cancellationToken)
     {
-        var command = new CreateSkillCommand(request.Name, request.Slug, request.Category, request.BasePointCost, request.Aliases);
+        var command = new CreateSkillCommand(request.Name, request.Slug, request.Category, request.IconKey, request.BasePointCost, request.Aliases);
         var result = await _sender.Send(command, cancellationToken);
 
         if (result.IsSuccess)
@@ -96,6 +96,8 @@ public class AdminSkillsController : ControllerBase
             request.Slug,
             request.HasCategory,
             request.Category,
+            request.HasIconKey,
+            request.IconKey,
             request.HasBasePointCost,
             request.BasePointCost,
             request.HasAliases,

@@ -7,7 +7,7 @@ internal static class SkillDtoMapper
 {
     public static SkillDto Map(Skill skill)
     {
-        return new SkillDto(skill.SkillId, skill.Name, skill.Slug, skill.Category);
+        return new SkillDto(skill.SkillId, skill.Name, skill.Slug, skill.Category, skill.IconKey);
     }
 
     public static AdminSkillDto MapAdmin(Skill skill)
@@ -17,6 +17,7 @@ internal static class SkillDtoMapper
             skill.Name,
             skill.Slug,
             skill.Category,
+            skill.IconKey,
             skill.BasePointCost,
             skill.Aliases.AsReadOnly(),
             skill.IsActive);

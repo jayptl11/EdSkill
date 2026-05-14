@@ -9,6 +9,7 @@ public class Skill
     public string Name { get; set; } = string.Empty;
     public string Slug { get; set; } = string.Empty;
     public string? Category { get; set; }
+    public string? IconKey { get; set; }
     public int BasePointCost { get; set; }
     public List<string> Aliases { get; set; } = new();
     public bool IsActive { get; set; } = true;

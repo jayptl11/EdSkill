@@ -354,6 +354,8 @@ namespace EdSkill.Infrastructure.Persistence
                     .IsRequired();
                 entity.Property(s => s.Category)
                     .HasMaxLength(100);
+                entity.Property(s => s.IconKey)
+                    .HasMaxLength(50);
                 entity.Property(s => s.BasePointCost)
                     .HasDefaultValue(0);
                 entity.Property(s => s.Aliases)

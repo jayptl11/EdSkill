@@ -24,6 +24,15 @@ public class CreateSkillCommandValidator : AbstractValidator<CreateSkillCommand>
             .WithMessage("Skill category must not exceed 100 characters")
             .WithErrorCode("INVALID_SKILL_CATEGORY");
 
+        RuleFor(x => x.IconKey)
+            .Must(iconKey =>
+            {
+                var normalizedIconKey = SkillNormalization.NormalizeIconKey(iconKey);
+                return normalizedIconKey is null || SkillNormalization.IsValidIconKey(normalizedIconKey);
+            })
+            .WithMessage("Skill icon key is invalid")
+            .WithErrorCode("INVALID_SKILL_ICON_KEY");
+
         RuleFor(x => x.BasePointCost)
             .GreaterThan(0)
             .WithMessage("Skill base point cost must be greater than zero")

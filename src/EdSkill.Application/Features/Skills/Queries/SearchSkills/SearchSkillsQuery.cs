@@ -7,5 +7,5 @@ namespace EdSkill.Application.Features.Skills.Queries.SearchSkills;
 public record SearchSkillsQuery(
     string? Query,
     string? Category,
-    int Limit = 20
+    int Limit = 100
 ) : IRequest<Result<IReadOnlyCollection<SkillDto>>>;

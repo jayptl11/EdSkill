@@ -25,6 +25,7 @@ public class CreateSkillCommandHandler : IRequestHandler<CreateSkillCommand, Res
         var category = string.IsNullOrWhiteSpace(request.Category)
             ? null
             : SkillNormalization.NormalizeWhitespace(request.Category);
+        var iconKey = SkillNormalization.NormalizeIconKey(request.IconKey);
         var aliases = SkillNormalization.NormalizeAliasCollection(request.Aliases);
 
         if (string.IsNullOrWhiteSpace(slug))
@@ -49,6 +50,7 @@ public class CreateSkillCommandHandler : IRequestHandler<CreateSkillCommand, Res
             Name = name,
             Slug = slug,
             Category = category,
+            IconKey = iconKey,
             BasePointCost = request.BasePointCost,
             Aliases = aliases,
             IsActive = true,

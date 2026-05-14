@@ -41,6 +41,18 @@ public class UpdateSkillCommandValidator : AbstractValidator<UpdateSkillCommand>
                 .WithErrorCode("INVALID_SKILL_CATEGORY");
         });
 
+        When(x => x.HasIconKey, () =>
+        {
+            RuleFor(x => x.IconKey)
+                .Must(iconKey =>
+                {
+                    var normalizedIconKey = SkillNormalization.NormalizeIconKey(iconKey);
+                    return normalizedIconKey is null || SkillNormalization.IsValidIconKey(normalizedIconKey);
+                })
+                .WithMessage("Skill icon key is invalid")
+                .WithErrorCode("INVALID_SKILL_ICON_KEY");
+        });
+
         When(x => x.HasBasePointCost, () =>
         {
             RuleFor(x => x.BasePointCost)
