@@ -1,3 +1,5 @@
+using EdSkill.Application.Features.Achievements.DTOs;
+
 namespace EdSkill.Application.Features.Profile.DTOs;
 
 public record ProfileSkillDto(
@@ -20,6 +22,7 @@ public record ProfileDto(
     IReadOnlyCollection<string> SkillsToLearn,
     IReadOnlyCollection<ProfileSkillDto> TeachingSkills,
     IReadOnlyCollection<ProfileSkillDto> LearningSkills,
+    IReadOnlyCollection<AchievementSummaryDto> Achievements,
     bool IsPublic,
     IReadOnlyCollection<string> Roles,
     int TotalSessions,

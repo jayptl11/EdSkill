@@ -67,6 +67,11 @@ public class ConfirmSessionCompletionCommandHandlerTests
             .Setup(x => x.ExecuteAsync<SessionDto>(It.IsAny<Func<CancellationToken, Task<Result<SessionDto>>>>(), It.IsAny<CancellationToken>()))
             .Returns((Func<CancellationToken, Task<Result<SessionDto>>> operation, CancellationToken ct) => operation(ct));
 
+        var achievementAwardServiceMock = new Mock<IAchievementAwardService>();
+        achievementAwardServiceMock
+            .Setup(x => x.AwardForCompletedSessionAsync(session, It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
         var dateTimeProviderMock = new Mock<IDateTimeProvider>();
         dateTimeProviderMock.SetupGet(x => x.UtcNow).Returns(new DateTime(2026, 5, 10, 12, 0, 0, DateTimeKind.Utc));
 
@@ -80,7 +85,8 @@ public class ConfirmSessionCompletionCommandHandlerTests
             tokenLedgerServiceMock.Object,
             transactionExecutorMock.Object,
             dateTimeProviderMock.Object,
-            systemConfigServiceMock.Object);
+            systemConfigServiceMock.Object,
+            achievementAwardServiceMock.Object);
 
         var result = await handler.Handle(new ConfirmSessionCompletionCommand(session.SessionId), CancellationToken.None);
 
@@ -92,6 +98,7 @@ public class ConfirmSessionCompletionCommandHandlerTests
         pointLedgerServiceMock.Verify(x => x.CreditUser(companionWallet, PointTransactionType.SessionEarning, 150, session.SessionId, It.IsAny<string?>()), Times.Once);
         pointLedgerServiceMock.Verify(x => x.CreditPlatform(platformLedger, 38, session.SessionId, It.IsAny<string?>()), Times.Once);
         tokenLedgerServiceMock.Verify(x => x.AwardSessionCompletionTokensAsync(session, It.IsAny<CancellationToken>()), Times.Once);
+        achievementAwardServiceMock.Verify(x => x.AwardForCompletedSessionAsync(session, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -145,6 +152,11 @@ public class ConfirmSessionCompletionCommandHandlerTests
             .Setup(x => x.ExecuteAsync<SessionDto>(It.IsAny<Func<CancellationToken, Task<Result<SessionDto>>>>(), It.IsAny<CancellationToken>()))
             .Returns((Func<CancellationToken, Task<Result<SessionDto>>> operation, CancellationToken ct) => operation(ct));
 
+        var achievementAwardServiceMock = new Mock<IAchievementAwardService>();
+        achievementAwardServiceMock
+            .Setup(x => x.AwardForCompletedSessionAsync(session, It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
         var dateTimeProviderMock = new Mock<IDateTimeProvider>();
         dateTimeProviderMock.SetupGet(x => x.UtcNow).Returns(new DateTime(2026, 5, 10, 12, 0, 0, DateTimeKind.Utc));
 
@@ -159,7 +171,8 @@ public class ConfirmSessionCompletionCommandHandlerTests
             tokenLedgerServiceMock.Object,
             transactionExecutorMock.Object,
             dateTimeProviderMock.Object,
-            systemConfigServiceMock.Object);
+            systemConfigServiceMock.Object,
+            achievementAwardServiceMock.Object);
 
         var result = await handler.Handle(new ConfirmSessionCompletionCommand(session.SessionId), CancellationToken.None);
 
@@ -168,5 +181,6 @@ public class ConfirmSessionCompletionCommandHandlerTests
         pointLedgerServiceMock.Verify(x => x.CompleteSessionPayment(learnerWallet, 100, session.SessionId, It.IsAny<string?>()), Times.Once);
         pointLedgerServiceMock.Verify(x => x.CreditUser(companionWallet, PointTransactionType.SessionEarning, 70, session.SessionId, It.IsAny<string?>()), Times.Once);
         pointLedgerServiceMock.Verify(x => x.CreditPlatform(platformLedger, 30, session.SessionId, It.IsAny<string?>()), Times.Once);
+        achievementAwardServiceMock.Verify(x => x.AwardForCompletedSessionAsync(session, It.IsAny<CancellationToken>()), Times.Once);
     }
 }

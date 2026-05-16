@@ -63,6 +63,7 @@ public class GetUserProfileQueryHandlerTests
     public async Task Handle_WhenProfileIsPublic_HidesPrivateFields()
     {
         var userId = Guid.NewGuid();
+        var achievementId = Guid.NewGuid();
         var user = new User
         {
             UserId = userId,
@@ -97,8 +98,13 @@ public class GetUserProfileQueryHandlerTests
                 IsPublic = true
             }
         };
+        var achievements = new List<UserAchievement>
+        {
+            AchievementTestData.CreateUserAchievement(userId, achievementId)
+        };
 
         _contextMock.Setup(x => x.Users).Returns(new[] { user }.BuildMockDbSet().Object);
+        _contextMock.Setup(x => x.UserAchievements).Returns(achievements.BuildMockDbSet().Object);
 
         var result = await _handler.Handle(new GetUserProfileQuery(userId), CancellationToken.None);
 
@@ -113,5 +119,7 @@ public class GetUserProfileQueryHandlerTests
         result.Value.DateOfBirth.Should().BeNull();
         result.Value.Phone.Should().BeNull();
         result.Value.DegreeUrl.Should().BeNull();
+        result.Value.Achievements.Should().ContainSingle();
+        result.Value.Achievements.Single().AchievementId.Should().Be(achievementId);
     }
 }

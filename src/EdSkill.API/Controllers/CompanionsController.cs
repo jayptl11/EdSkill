@@ -1,6 +1,8 @@
 using EdSkill.Application.Common.Models;
 using EdSkill.Application.Features.Companions.DTOs;
 using EdSkill.Application.Features.Companions.Queries.GetCompanionDetail;
+using EdSkill.Application.Features.Companions.Queries.GetCompanionPublicProfile;
+using EdSkill.Application.Features.Companions.Queries.GetCompanionSkillDetail;
 using EdSkill.Application.Features.Companions.Queries.SearchCompanions;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
@@ -62,6 +64,41 @@ public class CompanionsController : ControllerBase
                 request.Location,
                 request.ReviewPage,
                 request.ReviewLimit),
+            cancellationToken);
+
+        return ToActionResult(result);
+    }
+
+    [HttpGet("{companionId:guid}/public-profile")]
+    [ProducesResponseType(typeof(CompanionPublicProfileDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
+    public async Task<IActionResult> GetPublicProfile(Guid companionId, CancellationToken cancellationToken = default)
+    {
+        var result = await _sender.Send(new GetCompanionPublicProfileQuery(companionId), cancellationToken);
+        return ToActionResult(result);
+    }
+
+    [HttpGet("{companionId:guid}/skills/{skillId:guid}")]
+    [ProducesResponseType(typeof(CompanionSkillDetailDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
+    public async Task<IActionResult> GetSkillDetail(
+        Guid companionId,
+        Guid skillId,
+        [FromQuery] GetCompanionSkillDetailRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var result = await _sender.Send(
+            new GetCompanionSkillDetailQuery(
+                companionId,
+                skillId,
+                request.ReviewPage,
+                request.ReviewLimit,
+                request.OfferPage,
+                request.OfferLimit),
             cancellationToken);
 
         return ToActionResult(result);

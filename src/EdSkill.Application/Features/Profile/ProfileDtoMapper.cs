@@ -1,3 +1,4 @@
+using EdSkill.Application.Features.Achievements.DTOs;
 using EdSkill.Application.Features.Profile.DTOs;
 using EdSkill.Domain.Enums;
 using EdSkill.Domain.Entities;
@@ -6,7 +7,11 @@ namespace EdSkill.Application.Features.Profile;
 
 internal static class ProfileDtoMapper
 {
-    public static ProfileDto Map(User user, UserProfile profile, bool includePrivateDetails = true)
+    public static ProfileDto Map(
+        User user,
+        UserProfile profile,
+        IReadOnlyCollection<AchievementSummaryDto>? achievements = null,
+        bool includePrivateDetails = true)
     {
         var teachingSkills = user.UserSkills
             .Where(userSkill => userSkill.Type == UserSkillType.Teach && userSkill.Skill is not null)
@@ -52,6 +57,7 @@ internal static class ProfileDtoMapper
             skillsToLearn.AsReadOnly(),
             teachingSkills.AsReadOnly(),
             learningSkills.AsReadOnly(),
+            achievements ?? Array.Empty<AchievementSummaryDto>(),
             profile.IsPublic,
             user.Roles.AsReadOnly(),
             profile.TotalSessions,

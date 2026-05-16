@@ -21,6 +21,7 @@ public static class DependencyInjection
         services.AddScoped<IPointLedgerService, PointLedgerService>();
         services.AddScoped<ISessionPricingService, SessionPricingService>();
         services.AddScoped<ITokenLedgerService, TokenLedgerService>();
+        services.AddScoped<IAchievementAwardService, AchievementAwardService>();
 
         // Add validation behavior
         services.AddScoped(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));

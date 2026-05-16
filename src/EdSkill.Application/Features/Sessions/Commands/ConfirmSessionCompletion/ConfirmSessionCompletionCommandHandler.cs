@@ -17,6 +17,7 @@ public class ConfirmSessionCompletionCommandHandler : IRequestHandler<ConfirmSes
     private readonly ITransactionExecutor _transactionExecutor;
     private readonly IDateTimeProvider _dateTimeProvider;
     private readonly ISystemConfigService _systemConfigService;
+    private readonly IAchievementAwardService _achievementAwardService;
 
     public ConfirmSessionCompletionCommandHandler(
         IApplicationDbContext context,
@@ -25,7 +26,8 @@ public class ConfirmSessionCompletionCommandHandler : IRequestHandler<ConfirmSes
         ITokenLedgerService tokenLedgerService,
         ITransactionExecutor transactionExecutor,
         IDateTimeProvider dateTimeProvider,
-        ISystemConfigService systemConfigService)
+        ISystemConfigService systemConfigService,
+        IAchievementAwardService achievementAwardService)
     {
         _context = context;
         _currentUserService = currentUserService;
@@ -34,6 +36,7 @@ public class ConfirmSessionCompletionCommandHandler : IRequestHandler<ConfirmSes
         _transactionExecutor = transactionExecutor;
         _dateTimeProvider = dateTimeProvider;
         _systemConfigService = systemConfigService;
+        _achievementAwardService = achievementAwardService;
     }
 
     public async Task<Result<SessionDto>> Handle(ConfirmSessionCompletionCommand request, CancellationToken cancellationToken)
@@ -169,6 +172,8 @@ public class ConfirmSessionCompletionCommandHandler : IRequestHandler<ConfirmSes
 
                 session.Status = SessionStatus.Completed;
                 session.DisbursedAt = _dateTimeProvider.UtcNow;
+
+                await _achievementAwardService.AwardForCompletedSessionAsync(session, ct);
             }
 
             session.UpdatedAt = _dateTimeProvider.UtcNow;

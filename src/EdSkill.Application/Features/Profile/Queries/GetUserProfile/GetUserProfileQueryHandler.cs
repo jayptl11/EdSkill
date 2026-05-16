@@ -1,5 +1,6 @@
 using EdSkill.Application.Common.Interfaces;
 using EdSkill.Application.Common.Models;
+using EdSkill.Application.Features.Companions;
 using EdSkill.Application.Features.Profile.DTOs;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -34,6 +35,7 @@ public class GetUserProfileQueryHandler : IRequestHandler<GetUserProfileQuery, R
             return Result<ProfileDto>.Failure("PROFILE_PRIVATE", "This profile is private.");
         }
 
-        return Result<ProfileDto>.Success(ProfileDtoMapper.Map(user, user.UserProfile, includePrivateDetails: false));
+        var achievements = await CompanionProfileDataLoader.LoadAchievementsAsync(_context, user.UserId, cancellationToken);
+        return Result<ProfileDto>.Success(ProfileDtoMapper.Map(user, user.UserProfile, achievements, includePrivateDetails: false));
     }
 }

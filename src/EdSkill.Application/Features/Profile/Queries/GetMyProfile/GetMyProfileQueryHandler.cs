@@ -1,5 +1,6 @@
 using EdSkill.Application.Common.Interfaces;
 using EdSkill.Application.Common.Models;
+using EdSkill.Application.Features.Companions;
 using EdSkill.Application.Features.Profile.DTOs;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -35,6 +36,7 @@ public class GetMyProfileQueryHandler : IRequestHandler<GetMyProfileQuery, Resul
             return Result<ProfileDto>.Failure("PROFILE_NOT_FOUND", "Profile was not found.");
         }
 
-        return Result<ProfileDto>.Success(ProfileDtoMapper.Map(user, user.UserProfile));
+        var achievements = await CompanionProfileDataLoader.LoadAchievementsAsync(_context, currentUserId, cancellationToken);
+        return Result<ProfileDto>.Success(ProfileDtoMapper.Map(user, user.UserProfile, achievements));
     }
 }

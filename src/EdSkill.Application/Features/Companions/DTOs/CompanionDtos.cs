@@ -1,3 +1,4 @@
+using EdSkill.Application.Features.Achievements.DTOs;
 using EdSkill.Application.Features.Sessions.DTOs;
 
 namespace EdSkill.Application.Features.Companions.DTOs;
@@ -24,6 +25,18 @@ public sealed class GetCompanionDetailRequest
     public string? Location { get; init; }
     public int ReviewPage { get; init; } = 1;
     public int ReviewLimit { get; init; } = 10;
+}
+
+public sealed class GetCompanionPublicProfileRequest
+{
+}
+
+public sealed class GetCompanionSkillDetailRequest
+{
+    public int ReviewPage { get; init; } = 1;
+    public int ReviewLimit { get; init; } = 10;
+    public int OfferPage { get; init; } = 1;
+    public int OfferLimit { get; init; } = 20;
 }
 
 public record CompanionSearchItemDto(
@@ -78,4 +91,48 @@ public record CompanionDetailDto(
     int TotalReviews,
     CompanionReviewListDto Reviews,
     IReadOnlyCollection<SessionDto> Sessions
+);
+
+public record CompanionActivitySummaryDto(
+    int TotalSessions,
+    int TotalTeachingHours,
+    double AvgRating,
+    int TotalReviews,
+    DateTime? LastActiveAt
+);
+
+public record CompanionTeachingSkillDto(
+    Guid SkillId,
+    string Name,
+    string? IconKey,
+    int OfferCount,
+    int? StartingPointCost,
+    DateTime? NextScheduledAt,
+    bool HasAvailableOffers
+);
+
+public record CompanionPublicProfileDto(
+    Guid CompanionId,
+    string DisplayName,
+    string? AvatarUrl,
+    string? Bio,
+    IReadOnlyCollection<string> Roles,
+    CompanionActivitySummaryDto ActivitySummary,
+    IReadOnlyCollection<AchievementSummaryDto> Achievements,
+    IReadOnlyCollection<CompanionTeachingSkillDto> TeachingSkills
+);
+
+public record CompanionSkillInfoDto(
+    Guid SkillId,
+    string Name,
+    string? IconKey
+);
+
+public record CompanionSkillDetailDto(
+    Guid CompanionId,
+    CompanionSkillInfoDto Skill,
+    double AvgRating,
+    int TotalReviews,
+    SessionListDto Offers,
+    CompanionReviewListDto Reviews
 );

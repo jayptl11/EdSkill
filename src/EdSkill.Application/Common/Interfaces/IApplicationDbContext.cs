@@ -17,6 +17,8 @@ namespace EdSkill.Application.Common.Interfaces
         public DbSet<Skill> Skills { get; }
         public DbSet<UserSkill> UserSkills { get; }
         public DbSet<Review> Reviews { get; }
+        public DbSet<AchievementDefinition> AchievementDefinitions { get; }
+        public DbSet<UserAchievement> UserAchievements { get; }
         public DbSet<TokenTransaction> TokenTransactions { get; }
         public DbSet<RefreshToken> RefreshTokens { get; }
         public DbSet<TokenBlacklist> TokenBlacklist { get; }

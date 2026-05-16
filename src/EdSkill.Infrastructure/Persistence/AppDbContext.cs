@@ -30,6 +30,8 @@ namespace EdSkill.Infrastructure.Persistence
         public DbSet<Skill> Skills => Set<Skill>();
         public DbSet<UserSkill> UserSkills => Set<UserSkill>();
         public DbSet<Review> Reviews => Set<Review>();
+        public DbSet<AchievementDefinition> AchievementDefinitions => Set<AchievementDefinition>();
+        public DbSet<UserAchievement> UserAchievements => Set<UserAchievement>();
         public DbSet<TokenTransaction> TokenTransactions => Set<TokenTransaction>();
         public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
         public DbSet<TokenBlacklist> TokenBlacklist => Set<TokenBlacklist>();
@@ -50,6 +52,8 @@ namespace EdSkill.Infrastructure.Persistence
             modelBuilder.Entity<Skill>().HasKey(e => e.SkillId);
             modelBuilder.Entity<UserSkill>().HasKey(e => e.UserSkillId);
             modelBuilder.Entity<Review>().HasKey(e => e.ReviewId);
+            modelBuilder.Entity<AchievementDefinition>().HasKey(e => e.AchievementDefinitionId);
+            modelBuilder.Entity<UserAchievement>().HasKey(e => e.UserAchievementId);
             modelBuilder.Entity<TokenTransaction>().HasKey(e => e.TokenTransactionId);
             modelBuilder.Entity<RefreshToken>().HasKey(e => e.TokenId);
             modelBuilder.Entity<TokenBlacklist>().HasKey(e => e.Id);
@@ -141,6 +145,11 @@ namespace EdSkill.Infrastructure.Persistence
                 entity.HasMany(u => u.TokenTransactions)
                     .WithOne(transaction => transaction.User)
                     .HasForeignKey(transaction => transaction.UserId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasMany(u => u.UserAchievements)
+                    .WithOne(achievement => achievement.User)
+                    .HasForeignKey(achievement => achievement.UserId)
                     .OnDelete(DeleteBehavior.Cascade);
 
                 entity.HasMany(u => u.CompanionSessions)
@@ -418,6 +427,47 @@ namespace EdSkill.Infrastructure.Persistence
                     .WithMany()
                     .HasForeignKey(transaction => transaction.SessionId)
                     .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<AchievementDefinition>(entity =>
+            {
+                entity.HasIndex(achievement => achievement.Name).IsUnique();
+                entity.Property(achievement => achievement.Name)
+                    .HasMaxLength(120)
+                    .IsRequired();
+                entity.Property(achievement => achievement.Description)
+                    .HasMaxLength(500)
+                    .IsRequired();
+                entity.Property(achievement => achievement.IconUrl)
+                    .HasMaxLength(2048);
+                entity.Property(achievement => achievement.Track)
+                    .HasConversion<string>()
+                    .HasMaxLength(32);
+                entity.Property(achievement => achievement.Metric)
+                    .HasConversion<string>()
+                    .HasMaxLength(64);
+                entity.Property(achievement => achievement.Threshold)
+                    .HasDefaultValue(1);
+                entity.Property(achievement => achievement.SortOrder)
+                    .HasDefaultValue(0);
+                entity.Property(achievement => achievement.IsActive)
+                    .HasDefaultValue(true);
+                entity.Property(achievement => achievement.CreatedAt).HasDefaultValueSql("GETUTCDATE()");
+                entity.Property(achievement => achievement.UpdatedAt).HasDefaultValueSql("GETUTCDATE()");
+                entity.Property(achievement => achievement.EffectiveFromUtc).HasDefaultValueSql("GETUTCDATE()");
+            });
+
+            modelBuilder.Entity<UserAchievement>(entity =>
+            {
+                entity.HasIndex(achievement => new { achievement.UserId, achievement.AchievementDefinitionId }).IsUnique();
+                entity.HasIndex(achievement => new { achievement.UserId, achievement.AwardedAt });
+                entity.Property(achievement => achievement.CreatedAt).HasDefaultValueSql("GETUTCDATE()");
+                entity.Property(achievement => achievement.AwardedAt).HasDefaultValueSql("GETUTCDATE()");
+
+                entity.HasOne(achievement => achievement.AchievementDefinition)
+                    .WithMany(definition => definition.UserAchievements)
+                    .HasForeignKey(achievement => achievement.AchievementDefinitionId)
+                    .OnDelete(DeleteBehavior.Cascade);
             });
         }
     }

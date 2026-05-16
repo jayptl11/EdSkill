@@ -67,9 +67,15 @@ public class GetMyProfileQueryHandlerTests
                 IsPublic = true
             }
         };
+        var achievementId = Guid.NewGuid();
+        var achievements = new List<UserAchievement>
+        {
+            AchievementTestData.CreateUserAchievement(userId, achievementId)
+        };
 
         var contextMock = new Mock<IApplicationDbContext>();
         contextMock.Setup(x => x.Users).Returns(new[] { user }.BuildMockDbSet().Object);
+        contextMock.Setup(x => x.UserAchievements).Returns(achievements.BuildMockDbSet().Object);
 
         var currentUserServiceMock = new Mock<ICurrentUserService>();
         currentUserServiceMock.Setup(x => x.GetUserId()).Returns(userId);
@@ -89,5 +95,7 @@ public class GetMyProfileQueryHandlerTests
         result.Value.LearningSkills.Single().SkillId.Should().Be(learnSkillId);
         result.Value.LearningSkills.Single().Name.Should().Be("React");
         result.Value.LearningSkills.Single().IconKey.Should().Be("code");
+        result.Value.Achievements.Should().ContainSingle();
+        result.Value.Achievements.Single().AchievementId.Should().Be(achievementId);
     }
 }
