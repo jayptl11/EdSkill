@@ -44,6 +44,7 @@ public class CreateSessionOfferCommandHandler : IRequestHandler<CreateSessionOff
         {
             var companion = await _context.Users
                 .Include(item => item.UserProfile)
+                .Include(item => item.UserSkills)
                 .FirstOrDefaultAsync(item => item.UserId == companionId, ct);
             if (companion == null)
             {
@@ -64,6 +65,14 @@ public class CreateSessionOfferCommandHandler : IRequestHandler<CreateSessionOff
             if (!onboardingState.IsComplete)
             {
                 return Result<SessionDto>.Failure("COMPANION_PROFILE_INCOMPLETE", "Companion profile is incomplete.");
+            }
+
+            var ownsTeachingSkill = companion.UserSkills.Any(item =>
+                item.Type == UserSkillType.Teach
+                && item.SkillId == request.SkillId);
+            if (!ownsTeachingSkill)
+            {
+                return Result<SessionDto>.Failure("COMPANION_SKILL_NOT_OWNED", "Companion can only create session offers for owned teaching skills.");
             }
 
             var maxPerDay = await _systemConfigService.GetIntValueAsync(SystemConfigKeys.SessionMaxPerDayPerCompanion, ct);
@@ -122,10 +131,8 @@ public class CreateSessionOfferCommandHandler : IRequestHandler<CreateSessionOff
                 SkillId = skill.SkillId,
                 Skill = skill.Name,
                 Description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim(),
-                DeliveryMode = request.DeliveryMode,
-                Location = request.DeliveryMode == SessionDeliveryMode.Offline
-                    ? request.Location!.Trim()
-                    : null,
+                DeliveryMode = SessionDeliveryMode.Online,
+                Location = null,
                 DurationMinutes = reservedDurationMinutes,
                 PricingModel = SessionPricingModel.FormulaV1,
                 DurationOptions = durationOptions.ToList(),

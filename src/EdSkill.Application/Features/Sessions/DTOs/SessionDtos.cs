@@ -76,8 +76,6 @@ public record SessionStatusDto(
 public record CreateSessionRequest(
     Guid SkillId,
     string? Description,
-    SessionDeliveryMode DeliveryMode,
-    string? Location,
     IReadOnlyCollection<int> DurationOptions,
     DateTime ScheduledAt
 );

@@ -1,6 +1,7 @@
 using EdSkill.Application.Common.Interfaces;
 using EdSkill.Application.Features.Profile.Commands.EnableCompanion;
 using EdSkill.Domain.Entities;
+using EdSkill.Domain.Enums;
 using EdSkill.UnitTests.Helpers;
 using FluentAssertions;
 using Moq;
@@ -13,10 +14,29 @@ public class EnableCompanionCommandHandlerTests
     public async Task Handle_WhenUserIsLearner_AddsCompanionRole()
     {
         var userId = Guid.NewGuid();
+        var skillId = Guid.NewGuid();
         var user = new User
         {
             UserId = userId,
             Roles = new List<string> { "learner" },
+            UserSkills = new List<UserSkill>
+            {
+                new()
+                {
+                    UserSkillId = Guid.NewGuid(),
+                    UserId = userId,
+                    SkillId = skillId,
+                    Skill = new Skill
+                    {
+                        SkillId = skillId,
+                        Name = "Speaking",
+                        Slug = "speaking",
+                        IconKey = "languages",
+                        IsActive = true
+                    },
+                    Type = UserSkillType.Teach
+                }
+            },
             UserProfile = new UserProfile
             {
                 ProfileId = Guid.NewGuid(),
@@ -40,6 +60,7 @@ public class EnableCompanionCommandHandlerTests
         result.IsSuccess.Should().BeTrue();
         user.Roles.Should().BeEquivalentTo("learner", "companion");
         result.Value!.Roles.Should().BeEquivalentTo("learner", "companion");
+        result.Value.TeachingSkills.Should().ContainSingle();
         result.Value.IsCompanionOnboardingComplete.Should().BeFalse();
         result.Value.MissingCompanionProfileFields.Should().Contain("avatarUrl");
     }
@@ -48,10 +69,29 @@ public class EnableCompanionCommandHandlerTests
     public async Task Handle_WhenUserAlreadyCompanion_DoesNotDuplicateRole()
     {
         var userId = Guid.NewGuid();
+        var skillId = Guid.NewGuid();
         var user = new User
         {
             UserId = userId,
             Roles = new List<string> { "learner", "companion" },
+            UserSkills = new List<UserSkill>
+            {
+                new()
+                {
+                    UserSkillId = Guid.NewGuid(),
+                    UserId = userId,
+                    SkillId = skillId,
+                    Skill = new Skill
+                    {
+                        SkillId = skillId,
+                        Name = "Speaking",
+                        Slug = "speaking",
+                        IconKey = "languages",
+                        IsActive = true
+                    },
+                    Type = UserSkillType.Teach
+                }
+            },
             UserProfile = new UserProfile
             {
                 ProfileId = Guid.NewGuid(),
@@ -73,6 +113,7 @@ public class EnableCompanionCommandHandlerTests
 
         result.IsSuccess.Should().BeTrue();
         user.Roles.Count(role => role == "companion").Should().Be(1);
+        result.Value!.TeachingSkills.Should().ContainSingle();
         contextMock.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 }

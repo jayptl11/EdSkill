@@ -36,8 +36,6 @@ public class SessionsController : ControllerBase
         var command = new CreateSessionOfferCommand(
             request.SkillId,
             request.Description,
-            request.DeliveryMode,
-            request.Location,
             request.DurationOptions,
             request.ScheduledAt);
 
@@ -148,7 +146,7 @@ public class SessionsController : ControllerBase
             "PROFILE_NOT_FOUND" => NotFound(new { result.ErrorCode, result.ErrorMessage }),
             "FORBIDDEN" => StatusCode(StatusCodes.Status403Forbidden, new { result.ErrorCode, result.ErrorMessage }),
             "COMPANION_PROFILE_INCOMPLETE" => UnprocessableEntity(new { result.ErrorCode, result.ErrorMessage }),
-            "SESSION_NOT_AVAILABLE" or "SESSION_LIMIT_REACHED" or "SELF_BOOKING" or "INSUFFICIENT_POINTS" or "SESSION_DURATION_INVALID" or "SESSION_NOT_ONLINE" or "INVALID_DURATION_OPTIONS" or "INVALID_SELECTED_DURATION" or "SKILL_BASE_POINTS_INVALID" => BadRequest(new { result.ErrorCode, result.ErrorMessage }),
+            "SESSION_NOT_AVAILABLE" or "SESSION_LIMIT_REACHED" or "SELF_BOOKING" or "INSUFFICIENT_POINTS" or "SESSION_DURATION_INVALID" or "SESSION_NOT_ONLINE" or "INVALID_DURATION_OPTIONS" or "INVALID_SELECTED_DURATION" or "SKILL_BASE_POINTS_INVALID" or "COMPANION_SKILL_NOT_OWNED" => BadRequest(new { result.ErrorCode, result.ErrorMessage }),
             "SKILL_NOT_FOUND" => NotFound(new { result.ErrorCode, result.ErrorMessage }),
             "SESSION_INVALID_STATUS" or "SESSION_TIME_CONFLICT" => Conflict(new { result.ErrorCode, result.ErrorMessage }),
             _ => BadRequest(new { result.ErrorCode, result.ErrorMessage })

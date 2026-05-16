@@ -1,5 +1,11 @@
 namespace EdSkill.Application.Features.Profile.DTOs;
 
+public record ProfileSkillDto(
+    Guid SkillId,
+    string Name,
+    string? IconKey
+);
+
 public record ProfileDto(
     Guid UserId,
     string DisplayName,
@@ -12,6 +18,8 @@ public record ProfileDto(
     int CredentialCount,
     IReadOnlyCollection<string> SkillsToTeach,
     IReadOnlyCollection<string> SkillsToLearn,
+    IReadOnlyCollection<ProfileSkillDto> TeachingSkills,
+    IReadOnlyCollection<ProfileSkillDto> LearningSkills,
     bool IsPublic,
     IReadOnlyCollection<string> Roles,
     int TotalSessions,

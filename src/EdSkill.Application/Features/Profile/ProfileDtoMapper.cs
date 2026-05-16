@@ -8,18 +8,30 @@ internal static class ProfileDtoMapper
 {
     public static ProfileDto Map(User user, UserProfile profile, bool includePrivateDetails = true)
     {
-        var skillsToTeach = user.UserSkills
+        var teachingSkills = user.UserSkills
             .Where(userSkill => userSkill.Type == UserSkillType.Teach && userSkill.Skill is not null)
-            .Select(userSkill => userSkill.Skill.Name)
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .OrderBy(name => name)
+            .Select(userSkill => userSkill.Skill)
+            .GroupBy(skill => skill.SkillId)
+            .Select(group => group.First())
+            .OrderBy(skill => skill.Name)
+            .Select(skill => new ProfileSkillDto(skill.SkillId, skill.Name, skill.IconKey))
             .ToList();
 
-        var skillsToLearn = user.UserSkills
+        var learningSkills = user.UserSkills
             .Where(userSkill => userSkill.Type == UserSkillType.Learn && userSkill.Skill is not null)
-            .Select(userSkill => userSkill.Skill.Name)
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .OrderBy(name => name)
+            .Select(userSkill => userSkill.Skill)
+            .GroupBy(skill => skill.SkillId)
+            .Select(group => group.First())
+            .OrderBy(skill => skill.Name)
+            .Select(skill => new ProfileSkillDto(skill.SkillId, skill.Name, skill.IconKey))
+            .ToList();
+
+        var skillsToTeach = teachingSkills
+            .Select(skill => skill.Name)
+            .ToList();
+
+        var skillsToLearn = learningSkills
+            .Select(skill => skill.Name)
             .ToList();
 
         profile.SkillsToTeach = skillsToTeach;
@@ -38,6 +50,8 @@ internal static class ProfileDtoMapper
             profile.CredentialUrls.Count,
             skillsToTeach.AsReadOnly(),
             skillsToLearn.AsReadOnly(),
+            teachingSkills.AsReadOnly(),
+            learningSkills.AsReadOnly(),
             profile.IsPublic,
             user.Roles.AsReadOnly(),
             profile.TotalSessions,

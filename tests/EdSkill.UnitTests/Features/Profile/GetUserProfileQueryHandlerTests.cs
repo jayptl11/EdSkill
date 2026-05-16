@@ -105,6 +105,9 @@ public class GetUserProfileQueryHandlerTests
         result.IsSuccess.Should().BeTrue();
         result.Value!.SkillsToTeach.Should().BeEquivalentTo("Speaking");
         result.Value.SkillsToLearn.Should().BeEmpty();
+        result.Value.TeachingSkills.Should().ContainSingle();
+        result.Value.TeachingSkills.Single().Name.Should().Be("Speaking");
+        result.Value.LearningSkills.Should().BeEmpty();
         result.Value.IsCompanionOnboardingComplete.Should().BeTrue();
         result.Value.MissingCompanionProfileFields.Should().BeEmpty();
         result.Value.DateOfBirth.Should().BeNull();

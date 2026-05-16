@@ -1,5 +1,4 @@
 using EdSkill.Application.Features.Sessions.Commands.CreateSessionOffer;
-using EdSkill.Domain.Enums;
 using FluentValidation.TestHelper;
 
 namespace EdSkill.UnitTests.Features.Sessions;
@@ -14,8 +13,6 @@ public class CreateSessionOfferCommandValidatorTests
         var command = new CreateSessionOfferCommand(
             Guid.NewGuid(),
             "Description",
-            SessionDeliveryMode.Online,
-            null,
             new[] { 45, 50 },
             DateTime.UtcNow.AddDays(1));
 
@@ -26,19 +23,17 @@ public class CreateSessionOfferCommandValidatorTests
     }
 
     [Fact]
-    public void Validate_WhenOfflineSessionMissingLocation_ShouldHaveError()
+    public void Validate_WhenRequestDoesNotContainLegacyDeliveryFields_ShouldNotHaveError()
     {
         var command = new CreateSessionOfferCommand(
             Guid.NewGuid(),
             "Description",
-            SessionDeliveryMode.Offline,
-            null,
             new[] { 45, 60 },
             DateTime.UtcNow.AddDays(1));
 
         var result = _validator.TestValidate(command);
 
-        result.ShouldHaveValidationErrorFor(x => x.Location);
+        result.ShouldNotHaveValidationErrorFor(x => x.Description);
     }
 
     [Fact]
@@ -47,8 +42,6 @@ public class CreateSessionOfferCommandValidatorTests
         var command = new CreateSessionOfferCommand(
             Guid.NewGuid(),
             "Description",
-            SessionDeliveryMode.Online,
-            null,
             new[] { 30, 45, 90 },
             DateTime.UtcNow.AddDays(1));
 

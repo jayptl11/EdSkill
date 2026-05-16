@@ -24,6 +24,16 @@ public class CreateSessionOfferCommandHandlerTests
             {
                 UserId = userId,
                 Roles = new List<string> { "learner", "companion" },
+                UserSkills = new List<UserSkill>
+                {
+                    new()
+                    {
+                        UserSkillId = Guid.NewGuid(),
+                        UserId = userId,
+                        SkillId = skillId,
+                        Type = UserSkillType.Teach
+                    }
+                },
                 UserProfile = new UserProfile
                 {
                     ProfileId = Guid.NewGuid(),
@@ -50,7 +60,7 @@ public class CreateSessionOfferCommandHandlerTests
         };
 
         var result = await CreateHandler(userId, users, [], skills).Handle(
-            new CreateSessionOfferCommand(skillId, "Desc", SessionDeliveryMode.Online, null, new[] { 45, 60 }, DateTime.UtcNow.AddDays(1)),
+            new CreateSessionOfferCommand(skillId, "Desc", new[] { 45, 60 }, DateTime.UtcNow.AddDays(1)),
             CancellationToken.None);
 
         result.IsSuccess.Should().BeFalse();
@@ -69,6 +79,16 @@ public class CreateSessionOfferCommandHandlerTests
             {
                 UserId = userId,
                 Roles = new List<string> { "learner", "companion" },
+                UserSkills = new List<UserSkill>
+                {
+                    new()
+                    {
+                        UserSkillId = Guid.NewGuid(),
+                        UserId = userId,
+                        SkillId = skillId,
+                        Type = UserSkillType.Teach
+                    }
+                },
                 UserProfile = new UserProfile
                 {
                     ProfileId = Guid.NewGuid(),
@@ -97,13 +117,15 @@ public class CreateSessionOfferCommandHandlerTests
         };
 
         var result = await CreateHandler(userId, users, sessions, skills).Handle(
-            new CreateSessionOfferCommand(skillId, "Desc", SessionDeliveryMode.Online, null, new[] { 45, 60 }, DateTime.UtcNow.AddDays(1)),
+            new CreateSessionOfferCommand(skillId, "Desc", new[] { 45, 60 }, DateTime.UtcNow.AddDays(1)),
             CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
         sessions.Should().HaveCount(1);
         sessions[0].Status.Should().Be(SessionStatus.Available);
         sessions[0].PricingModel.Should().Be(SessionPricingModel.FormulaV1);
+        sessions[0].DeliveryMode.Should().Be(SessionDeliveryMode.Online);
+        sessions[0].Location.Should().BeNull();
         sessions[0].DurationOptions.Should().BeEquivalentTo(new[] { 30, 45, 60 });
         sessions[0].DurationMinutes.Should().Be(60);
         result.Value!.PricingPreview.MinLearnerChargePoints.Should().BeGreaterThan(0);
@@ -121,6 +143,16 @@ public class CreateSessionOfferCommandHandlerTests
             {
                 UserId = userId,
                 Roles = new List<string> { "learner", "companion" },
+                UserSkills = new List<UserSkill>
+                {
+                    new()
+                    {
+                        UserSkillId = Guid.NewGuid(),
+                        UserId = userId,
+                        SkillId = skillId,
+                        Type = UserSkillType.Teach
+                    }
+                },
                 UserProfile = new UserProfile
                 {
                     ProfileId = Guid.NewGuid(),
@@ -160,11 +192,68 @@ public class CreateSessionOfferCommandHandlerTests
         };
 
         var result = await CreateHandler(userId, users, sessions, skills).Handle(
-            new CreateSessionOfferCommand(skillId, "Desc", SessionDeliveryMode.Online, null, new[] { 45, 120 }, scheduledAt),
+            new CreateSessionOfferCommand(skillId, "Desc", new[] { 45, 120 }, scheduledAt),
             CancellationToken.None);
 
         result.IsSuccess.Should().BeFalse();
         result.ErrorCode.Should().Be("SESSION_TIME_CONFLICT");
+    }
+
+    [Fact]
+    public async Task Handle_WhenSkillIsNotOwnedByCompanion_ReturnsFailure()
+    {
+        var userId = Guid.NewGuid();
+        var ownedSkillId = Guid.NewGuid();
+        var requestedSkillId = Guid.NewGuid();
+        var users = new List<User>
+        {
+            new()
+            {
+                UserId = userId,
+                Roles = new List<string> { "learner", "companion" },
+                UserSkills = new List<UserSkill>
+                {
+                    new()
+                    {
+                        UserSkillId = Guid.NewGuid(),
+                        UserId = userId,
+                        SkillId = ownedSkillId,
+                        Type = UserSkillType.Teach
+                    }
+                },
+                UserProfile = new UserProfile
+                {
+                    ProfileId = Guid.NewGuid(),
+                    UserId = userId,
+                    DisplayName = "Teacher",
+                    AvatarUrl = "https://cdn.edskill.test/u/avatar.png",
+                    Bio = "I teach speaking",
+                    DateOfBirth = new DateTime(2000, 1, 2),
+                    Phone = "+84912345678",
+                    SkillsToTeach = new List<string> { "Speaking" },
+                    CredentialUrls = new List<string> { "https://cdn.edskill.test/degree/u/cert.pdf" },
+                    IsPublic = true
+                }
+            }
+        };
+        var skills = new List<Skill>
+        {
+            new()
+            {
+                SkillId = requestedSkillId,
+                Name = "Speaking",
+                Slug = "speaking",
+                BasePointCost = 100,
+                IsActive = true
+            }
+        };
+
+        var result = await CreateHandler(userId, users, [], skills).Handle(
+            new CreateSessionOfferCommand(requestedSkillId, "Desc", new[] { 45, 60 }, DateTime.UtcNow.AddDays(1)),
+            CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be("COMPANION_SKILL_NOT_OWNED");
     }
 
     private static CreateSessionOfferCommandHandler CreateHandler(
