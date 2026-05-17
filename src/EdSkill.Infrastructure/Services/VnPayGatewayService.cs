@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Net;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -23,6 +24,11 @@ public class VnPayGatewayService : IVnPayGatewayService
     {
         _settings = settings.Value;
         _logger = logger;
+        _settings.TerminalCode = GetEnvOrDefault("VNPAY__TERMINALCODE", "VNPAY_TERMINALCODE", _settings.TerminalCode);
+        _settings.HashSecret = GetEnvOrDefault("VNPAY__HASHSECRET", "VNPAY_HASHSECRET", _settings.HashSecret);
+        _settings.BaseUrl = GetEnvOrDefault("VNPAY__BASEURL", "VNPAY_BASEURL", _settings.BaseUrl);
+        _settings.PointPurchaseReturnUrl = GetEnvOrDefault("VNPAY__POINTPURCHASERETURNURL", "VNPAY_POINTPURCHASERETURNURL", _settings.PointPurchaseReturnUrl);
+        _settings.SubscriptionPurchaseReturnUrl = GetEnvOrDefault("VNPAY__SUBSCRIPTIONPURCHASERETURNURL", "VNPAY_SUBSCRIPTIONPURCHASERETURNURL", _settings.SubscriptionPurchaseReturnUrl);
     }
 
     public Result<VnPayCreatePaymentResult> CreatePaymentUrl(VnPayCreatePaymentRequest request)
@@ -60,7 +66,7 @@ public class VnPayGatewayService : IVnPayGatewayService
         };
 
         var query = BuildQueryString(parameters);
-        var hashData = BuildHashData(parameters);
+        var hashData = query;
         var hash = ComputeHash(hashData);
         var paymentUrl = $"{_settings.BaseUrl}?{query}&vnp_SecureHash={hash}";
 
@@ -100,13 +106,14 @@ public class VnPayGatewayService : IVnPayGatewayService
             normalized[pair.Key] = pair.Value;
         }
 
-        var computedHash = ComputeHash(BuildHashData(normalized));
+        var hashData = BuildQueryString(normalized);
+        var computedHash = ComputeHash(hashData);
         if (!string.Equals(computedHash, secureHash, StringComparison.OrdinalIgnoreCase))
         {
             _logger.LogWarning(
                 "VNPay callback signature mismatch. Params: {@Params}. HashData: {HashData}. ExpectedHash: {ExpectedHash}. ReceivedHash: {ReceivedHash}",
                 normalized,
-                BuildHashData(normalized),
+                hashData,
                 computedHash,
                 secureHash);
             return Result<VnPayCallbackParseResult>.Failure("PAYMENT_PROVIDER_INVALID_SIGNATURE", "VNPay callback signature is invalid.");
@@ -186,12 +193,23 @@ public class VnPayGatewayService : IVnPayGatewayService
 
     private static string BuildQueryString(IEnumerable<KeyValuePair<string, string>> parameters)
     {
-        return string.Join("&", parameters.Select(pair => $"{pair.Key}={Encode(pair.Value)}"));
-    }
+        var builder = new StringBuilder();
+        foreach (var (key, value) in parameters.OrderBy(item => item.Key, StringComparer.Ordinal))
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                continue;
+            }
 
-    private static string BuildHashData(IEnumerable<KeyValuePair<string, string>> parameters)
-    {
-        return string.Join("&", parameters.Select(pair => $"{pair.Key}={Encode(pair.Value)}"));
+            if (builder.Length > 0)
+            {
+                builder.Append('&');
+            }
+
+            builder.Append($"{key}={Encode(value)}");
+        }
+
+        return builder.ToString();
     }
 
     private string ComputeHash(string input)
@@ -200,12 +218,29 @@ public class VnPayGatewayService : IVnPayGatewayService
         var inputBytes = Encoding.UTF8.GetBytes(input);
         using var hmac = new HMACSHA512(keyBytes);
         var hashBytes = hmac.ComputeHash(inputBytes);
-        return Convert.ToHexString(hashBytes).ToLowerInvariant();
+        return BitConverter.ToString(hashBytes).Replace("-", string.Empty).ToLowerInvariant();
     }
 
     private static string Encode(string value)
     {
         return Uri.EscapeDataString(value ?? string.Empty);
+    }
+
+    private static string GetEnvOrDefault(string primaryEnvKey, string fallbackEnvKey, string currentValue)
+    {
+        var envValue = Environment.GetEnvironmentVariable(primaryEnvKey);
+        if (!string.IsNullOrWhiteSpace(envValue))
+        {
+            return envValue.Trim();
+        }
+
+        envValue = Environment.GetEnvironmentVariable(fallbackEnvKey);
+        if (!string.IsNullOrWhiteSpace(envValue))
+        {
+            return envValue.Trim();
+        }
+
+        return currentValue?.Trim() ?? string.Empty;
     }
 
     private string ResolveReturnUrl(VnPayPaymentPurpose purpose)
