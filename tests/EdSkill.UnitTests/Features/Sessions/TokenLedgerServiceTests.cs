@@ -1,4 +1,5 @@
 using EdSkill.Application.Common.Interfaces;
+using EdSkill.Application.Common.Models;
 using EdSkill.Application.Common.Services;
 using EdSkill.Application.Common.System;
 using EdSkill.Domain.Entities;
@@ -54,8 +55,16 @@ public class TokenLedgerServiceTests
 
         var dateTimeProviderMock = new Mock<IDateTimeProvider>();
         dateTimeProviderMock.SetupGet(x => x.UtcNow).Returns(new DateTime(2026, 5, 12, 2, 0, 0, DateTimeKind.Utc));
+        var subscriptionEntitlementServiceMock = new Mock<ISubscriptionEntitlementService>();
+        subscriptionEntitlementServiceMock
+            .Setup(x => x.GetResolvedEntitlementsAsync(It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<Guid, ResolvedSubscriptionEntitlements>());
 
-        var service = new TokenLedgerService(contextMock.Object, systemConfigServiceMock.Object, dateTimeProviderMock.Object);
+        var service = new TokenLedgerService(
+            contextMock.Object,
+            systemConfigServiceMock.Object,
+            subscriptionEntitlementServiceMock.Object,
+            dateTimeProviderMock.Object);
 
         var result = await service.AwardSessionCompletionTokensAsync(session, CancellationToken.None);
 
@@ -98,8 +107,16 @@ public class TokenLedgerServiceTests
 
         var dateTimeProviderMock = new Mock<IDateTimeProvider>();
         dateTimeProviderMock.SetupGet(x => x.UtcNow).Returns(new DateTime(2026, 5, 12, 2, 0, 0, DateTimeKind.Utc));
+        var subscriptionEntitlementServiceMock = new Mock<ISubscriptionEntitlementService>();
+        subscriptionEntitlementServiceMock
+            .Setup(x => x.GetResolvedEntitlementsAsync(It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<Guid, ResolvedSubscriptionEntitlements>());
 
-        var service = new TokenLedgerService(contextMock.Object, systemConfigServiceMock.Object, dateTimeProviderMock.Object);
+        var service = new TokenLedgerService(
+            contextMock.Object,
+            systemConfigServiceMock.Object,
+            subscriptionEntitlementServiceMock.Object,
+            dateTimeProviderMock.Object);
 
         var result = await service.AwardSessionCompletionTokensAsync(session, CancellationToken.None);
 
@@ -152,8 +169,16 @@ public class TokenLedgerServiceTests
 
         var dateTimeProviderMock = new Mock<IDateTimeProvider>();
         dateTimeProviderMock.SetupGet(x => x.UtcNow).Returns(new DateTime(2026, 5, 12, 2, 0, 0, DateTimeKind.Utc));
+        var subscriptionEntitlementServiceMock = new Mock<ISubscriptionEntitlementService>();
+        subscriptionEntitlementServiceMock
+            .Setup(x => x.GetResolvedEntitlementsAsync(It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<Guid, ResolvedSubscriptionEntitlements>());
 
-        var service = new TokenLedgerService(contextMock.Object, systemConfigServiceMock.Object, dateTimeProviderMock.Object);
+        var service = new TokenLedgerService(
+            contextMock.Object,
+            systemConfigServiceMock.Object,
+            subscriptionEntitlementServiceMock.Object,
+            dateTimeProviderMock.Object);
 
         var result = await service.AwardSessionCompletionTokensAsync(session, CancellationToken.None);
 

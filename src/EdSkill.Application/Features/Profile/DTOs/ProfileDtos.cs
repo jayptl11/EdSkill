@@ -1,4 +1,5 @@
 using EdSkill.Application.Features.Achievements.DTOs;
+using EdSkill.Application.Features.Subscriptions.DTOs;
 
 namespace EdSkill.Application.Features.Profile.DTOs;
 
@@ -28,7 +29,9 @@ public record ProfileDto(
     int TotalSessions,
     DateTime? LastActiveAt,
     bool IsCompanionOnboardingComplete,
-    IReadOnlyCollection<string> MissingCompanionProfileFields
+    IReadOnlyCollection<string> MissingCompanionProfileFields,
+    IReadOnlyCollection<ActiveSubscriptionSummaryDto> ActiveSubscriptions,
+    ResolvedSubscriptionEntitlementsDto? SubscriptionEntitlements
 );
 
 public record AvatarUploadUrlDto(

@@ -164,8 +164,25 @@ public class GetCompanionPublicProfileQueryHandlerTests
         sessionPricingServiceMock
             .Setup(x => x.GetPlatformMarkupPctAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(25);
+        var subscriptionEntitlementServiceMock = new Mock<ISubscriptionEntitlementService>();
+        subscriptionEntitlementServiceMock
+            .Setup(x => x.GetResolvedEntitlementsAsync(companionId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ResolvedSubscriptionEntitlements(
+                [],
+                false,
+                true,
+                "Companion Pro",
+                true,
+                12,
+                null,
+                30m,
+                0,
+                0));
 
-        var handler = new GetCompanionPublicProfileQueryHandler(contextMock.Object, sessionPricingServiceMock.Object);
+        var handler = new GetCompanionPublicProfileQueryHandler(
+            contextMock.Object,
+            sessionPricingServiceMock.Object,
+            subscriptionEntitlementServiceMock.Object);
 
         var result = await handler.Handle(new GetCompanionPublicProfileQuery(companionId), CancellationToken.None);
 
@@ -173,6 +190,8 @@ public class GetCompanionPublicProfileQueryHandlerTests
         result.Value!.Achievements.Should().ContainSingle();
         result.Value.ActivitySummary.TotalTeachingHours.Should().Be(2);
         result.Value.ActivitySummary.AvgRating.Should().Be(5);
+        result.Value.SubscriptionBadge.Should().Be("Companion Pro");
+        result.Value.HasPriorityVisibility.Should().BeTrue();
         result.Value.TeachingSkills.Should().HaveCount(2);
         result.Value.TeachingSkills.Should().Contain(skill => skill.SkillId == skillWithoutOfferId && !skill.HasAvailableOffers);
         result.Value.TeachingSkills.Should().Contain(skill =>

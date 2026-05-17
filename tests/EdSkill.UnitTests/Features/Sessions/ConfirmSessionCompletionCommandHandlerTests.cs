@@ -61,6 +61,10 @@ public class ConfirmSessionCompletionCommandHandlerTests
 
         var tokenLedgerServiceMock = new Mock<ITokenLedgerService>();
         tokenLedgerServiceMock.Setup(x => x.AwardSessionCompletionTokensAsync(session, It.IsAny<CancellationToken>())).ReturnsAsync(Result.Success());
+        var subscriptionEntitlementServiceMock = new Mock<ISubscriptionEntitlementService>();
+        subscriptionEntitlementServiceMock
+            .Setup(x => x.ApplyWeeklyCompletionBonusesAsync(session, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result<SubscriptionWeeklyBonusResult>.Success(new SubscriptionWeeklyBonusResult(0, 0)));
 
         var transactionExecutorMock = new Mock<ITransactionExecutor>();
         transactionExecutorMock
@@ -83,6 +87,7 @@ public class ConfirmSessionCompletionCommandHandlerTests
             currentUserServiceMock.Object,
             pointLedgerServiceMock.Object,
             tokenLedgerServiceMock.Object,
+            subscriptionEntitlementServiceMock.Object,
             transactionExecutorMock.Object,
             dateTimeProviderMock.Object,
             systemConfigServiceMock.Object,
@@ -146,6 +151,10 @@ public class ConfirmSessionCompletionCommandHandlerTests
 
         var tokenLedgerServiceMock = new Mock<ITokenLedgerService>();
         tokenLedgerServiceMock.Setup(x => x.AwardSessionCompletionTokensAsync(session, It.IsAny<CancellationToken>())).ReturnsAsync(Result.Success());
+        var subscriptionEntitlementServiceMock = new Mock<ISubscriptionEntitlementService>();
+        subscriptionEntitlementServiceMock
+            .Setup(x => x.ApplyWeeklyCompletionBonusesAsync(session, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result<SubscriptionWeeklyBonusResult>.Success(new SubscriptionWeeklyBonusResult(0, 0)));
 
         var transactionExecutorMock = new Mock<ITransactionExecutor>();
         transactionExecutorMock
@@ -169,6 +178,7 @@ public class ConfirmSessionCompletionCommandHandlerTests
             currentUserServiceMock.Object,
             pointLedgerServiceMock.Object,
             tokenLedgerServiceMock.Object,
+            subscriptionEntitlementServiceMock.Object,
             transactionExecutorMock.Object,
             dateTimeProviderMock.Object,
             systemConfigServiceMock.Object,

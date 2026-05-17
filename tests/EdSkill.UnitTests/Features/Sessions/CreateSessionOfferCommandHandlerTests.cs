@@ -291,6 +291,10 @@ public class CreateSessionOfferCommandHandlerTests
         transactionExecutorMock
             .Setup(x => x.ExecuteAsync<SessionDto>(It.IsAny<Func<CancellationToken, Task<Result<SessionDto>>>>(), It.IsAny<CancellationToken>()))
             .Returns((Func<CancellationToken, Task<Result<SessionDto>>> operation, CancellationToken ct) => operation(ct));
+        var subscriptionEntitlementServiceMock = new Mock<ISubscriptionEntitlementService>();
+        subscriptionEntitlementServiceMock
+            .Setup(x => x.GetResolvedEntitlementsAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ResolvedSubscriptionEntitlements.Empty);
 
         return new CreateSessionOfferCommandHandler(
             contextMock.Object,
@@ -298,6 +302,7 @@ public class CreateSessionOfferCommandHandlerTests
             dateTimeProviderMock.Object,
             systemConfigServiceMock.Object,
             sessionPricingServiceMock.Object,
+            subscriptionEntitlementServiceMock.Object,
             transactionExecutorMock.Object);
     }
 }

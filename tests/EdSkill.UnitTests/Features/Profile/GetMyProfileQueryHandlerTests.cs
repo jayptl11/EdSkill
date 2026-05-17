@@ -1,4 +1,5 @@
 using EdSkill.Application.Common.Interfaces;
+using EdSkill.Application.Common.Models;
 using EdSkill.Application.Features.Profile.Queries.GetMyProfile;
 using EdSkill.Domain.Entities;
 using EdSkill.Domain.Enums;
@@ -79,8 +80,18 @@ public class GetMyProfileQueryHandlerTests
 
         var currentUserServiceMock = new Mock<ICurrentUserService>();
         currentUserServiceMock.Setup(x => x.GetUserId()).Returns(userId);
+        var subscriptionEntitlementServiceMock = new Mock<ISubscriptionEntitlementService>();
+        subscriptionEntitlementServiceMock
+            .Setup(x => x.GetActiveSubscriptionsAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([]);
+        subscriptionEntitlementServiceMock
+            .Setup(x => x.GetResolvedEntitlementsAsync(userId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ResolvedSubscriptionEntitlements.Empty);
 
-        var handler = new GetMyProfileQueryHandler(contextMock.Object, currentUserServiceMock.Object);
+        var handler = new GetMyProfileQueryHandler(
+            contextMock.Object,
+            currentUserServiceMock.Object,
+            subscriptionEntitlementServiceMock.Object);
 
         var result = await handler.Handle(new GetMyProfileQuery(), CancellationToken.None);
 
@@ -97,5 +108,7 @@ public class GetMyProfileQueryHandlerTests
         result.Value.LearningSkills.Single().IconKey.Should().Be("code");
         result.Value.Achievements.Should().ContainSingle();
         result.Value.Achievements.Single().AchievementId.Should().Be(achievementId);
+        result.Value.ActiveSubscriptions.Should().BeEmpty();
+        result.Value.SubscriptionEntitlements.Should().NotBeNull();
     }
 }

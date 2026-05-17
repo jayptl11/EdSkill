@@ -9,19 +9,20 @@ namespace EdSkill.Application.Common.Services;
 
 public sealed class TokenLedgerService : ITokenLedgerService
 {
-    private static readonly TimeZoneInfo VietnamTimeZone = ResolveVietnamTimeZone();
-
     private readonly IApplicationDbContext _context;
     private readonly ISystemConfigService _systemConfigService;
+    private readonly ISubscriptionEntitlementService _subscriptionEntitlementService;
     private readonly IDateTimeProvider _dateTimeProvider;
 
     public TokenLedgerService(
         IApplicationDbContext context,
         ISystemConfigService systemConfigService,
+        ISubscriptionEntitlementService subscriptionEntitlementService,
         IDateTimeProvider dateTimeProvider)
     {
         _context = context;
         _systemConfigService = systemConfigService;
+        _subscriptionEntitlementService = subscriptionEntitlementService;
         _dateTimeProvider = dateTimeProvider;
     }
 
@@ -39,7 +40,19 @@ public sealed class TokenLedgerService : ITokenLedgerService
             return Result.Failure("USER_NOT_FOUND", "Session participants were not found.");
         }
 
-        var (learnerReward, companionReward) = await ResolveRewardsAsync(session, cancellationToken);
+        var entitlementLookup = await _subscriptionEntitlementService.GetResolvedEntitlementsAsync(
+            new[] { learner.UserId, companion.UserId },
+            cancellationToken);
+
+        var (learnerReward, companionReward) = await ResolveRewardsAsync(
+            session,
+            entitlementLookup.TryGetValue(learner.UserId, out var learnerEntitlements)
+                ? learnerEntitlements
+                : ResolvedSubscriptionEntitlements.Empty,
+            entitlementLookup.TryGetValue(companion.UserId, out var companionEntitlements)
+                ? companionEntitlements
+                : ResolvedSubscriptionEntitlements.Empty,
+            cancellationToken);
 
         var learnerResult = await CreditUserAsync(
             learner,
@@ -68,14 +81,20 @@ public sealed class TokenLedgerService : ITokenLedgerService
         return Result.Success();
     }
 
-    private async Task<(decimal LearnerReward, decimal CompanionReward)> ResolveRewardsAsync(Session session, CancellationToken cancellationToken)
+    private async Task<(decimal LearnerReward, decimal CompanionReward)> ResolveRewardsAsync(
+        Session session,
+        ResolvedSubscriptionEntitlements learnerEntitlements,
+        ResolvedSubscriptionEntitlements companionEntitlements,
+        CancellationToken cancellationToken)
     {
         if (session.PricingModel == SessionPricingModel.FormulaV1)
         {
             var learnerChargePoints = session.LearnerChargePoints ?? 0;
+            var learnerRate = learnerEntitlements.LearnerTokenRewardRatePercent ?? 5m;
+            var companionRate = companionEntitlements.CompanionTokenRewardRatePercent ?? 3m;
             return (
-                decimal.Round(learnerChargePoints * 0.05m, 2, MidpointRounding.AwayFromZero),
-                decimal.Round(learnerChargePoints * 0.03m, 2, MidpointRounding.AwayFromZero));
+                decimal.Round(learnerChargePoints * learnerRate / 100m, 2, MidpointRounding.AwayFromZero),
+                decimal.Round(learnerChargePoints * companionRate / 100m, 2, MidpointRounding.AwayFromZero));
         }
 
         var learnerReward = await _systemConfigService.GetIntValueAsync(SystemConfigKeys.TokenLearnerPerSession, cancellationToken);
@@ -98,7 +117,7 @@ public sealed class TokenLedgerService : ITokenLedgerService
 
         var dailyLimit = await _systemConfigService.GetIntValueAsync(SystemConfigKeys.TokenDailyEarnLimit, cancellationToken);
         var weeklyLimit = await _systemConfigService.GetIntValueAsync(SystemConfigKeys.TokenWeeklyEarnLimit, cancellationToken);
-        var (dayStartUtc, weekStartUtc) = GetEarnWindowStartUtc(_dateTimeProvider.UtcNow);
+        var (dayStartUtc, weekStartUtc) = VietnamTimeWindowHelper.GetEarnWindowStartUtc(_dateTimeProvider.UtcNow);
 
         var dailyEarned = await _context.TokenTransactions
             .Where(item => item.UserId == user.UserId && item.Amount > 0 && item.CreatedAt >= dayStartUtc)
@@ -137,36 +156,5 @@ public sealed class TokenLedgerService : ITokenLedgerService
         });
 
         return Result.Success();
-    }
-
-    private static (DateTime DayStartUtc, DateTime WeekStartUtc) GetEarnWindowStartUtc(DateTime utcNow)
-    {
-        var localNow = TimeZoneInfo.ConvertTimeFromUtc(utcNow, VietnamTimeZone);
-        var dayStartLocal = localNow.Date;
-        var offsetFromMonday = ((int)localNow.DayOfWeek + 6) % 7;
-        var weekStartLocal = dayStartLocal.AddDays(-offsetFromMonday);
-
-        return (
-            TimeZoneInfo.ConvertTimeToUtc(dayStartLocal, VietnamTimeZone),
-            TimeZoneInfo.ConvertTimeToUtc(weekStartLocal, VietnamTimeZone));
-    }
-
-    private static TimeZoneInfo ResolveVietnamTimeZone()
-    {
-        foreach (var id in new[] { "SE Asia Standard Time", "Asia/Bangkok" })
-        {
-            try
-            {
-                return TimeZoneInfo.FindSystemTimeZoneById(id);
-            }
-            catch (TimeZoneNotFoundException)
-            {
-            }
-            catch (InvalidTimeZoneException)
-            {
-            }
-        }
-
-        return TimeZoneInfo.Utc;
     }
 }

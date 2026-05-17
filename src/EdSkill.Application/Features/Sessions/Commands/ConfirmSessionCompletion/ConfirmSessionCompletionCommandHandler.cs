@@ -14,6 +14,7 @@ public class ConfirmSessionCompletionCommandHandler : IRequestHandler<ConfirmSes
     private readonly ICurrentUserService _currentUserService;
     private readonly IPointLedgerService _pointLedgerService;
     private readonly ITokenLedgerService _tokenLedgerService;
+    private readonly ISubscriptionEntitlementService _subscriptionEntitlementService;
     private readonly ITransactionExecutor _transactionExecutor;
     private readonly IDateTimeProvider _dateTimeProvider;
     private readonly ISystemConfigService _systemConfigService;
@@ -24,6 +25,7 @@ public class ConfirmSessionCompletionCommandHandler : IRequestHandler<ConfirmSes
         ICurrentUserService currentUserService,
         IPointLedgerService pointLedgerService,
         ITokenLedgerService tokenLedgerService,
+        ISubscriptionEntitlementService subscriptionEntitlementService,
         ITransactionExecutor transactionExecutor,
         IDateTimeProvider dateTimeProvider,
         ISystemConfigService systemConfigService,
@@ -33,6 +35,7 @@ public class ConfirmSessionCompletionCommandHandler : IRequestHandler<ConfirmSes
         _currentUserService = currentUserService;
         _pointLedgerService = pointLedgerService;
         _tokenLedgerService = tokenLedgerService;
+        _subscriptionEntitlementService = subscriptionEntitlementService;
         _transactionExecutor = transactionExecutor;
         _dateTimeProvider = dateTimeProvider;
         _systemConfigService = systemConfigService;
@@ -168,6 +171,12 @@ public class ConfirmSessionCompletionCommandHandler : IRequestHandler<ConfirmSes
                 if (!tokenResult.IsSuccess)
                 {
                     return Result<SessionDto>.Failure(tokenResult.ErrorCode!, tokenResult.ErrorMessage!);
+                }
+
+                var subscriptionBonusResult = await _subscriptionEntitlementService.ApplyWeeklyCompletionBonusesAsync(session, ct);
+                if (!subscriptionBonusResult.IsSuccess)
+                {
+                    return Result<SessionDto>.Failure(subscriptionBonusResult.ErrorCode!, subscriptionBonusResult.ErrorMessage!);
                 }
 
                 session.Status = SessionStatus.Completed;

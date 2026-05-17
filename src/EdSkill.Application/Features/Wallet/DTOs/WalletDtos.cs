@@ -57,6 +57,8 @@ public record PaymentTransactionDto(
     Guid PaymentTransactionId,
     Guid? PackageId,
     string? PackageName,
+    Guid? SubscriptionPlanId,
+    string? SubscriptionPlanName,
     PaymentProvider Provider,
     int AmountVnd,
     string Currency,
@@ -77,6 +79,8 @@ public record VnPayReturnResultDto(
     Guid PaymentTransactionId,
     Guid? PackageId,
     string? PackageName,
+    Guid? SubscriptionPlanId,
+    string? SubscriptionPlanName,
     PaymentStatus Status,
     int CreditedPoints,
     bool AlreadyProcessed

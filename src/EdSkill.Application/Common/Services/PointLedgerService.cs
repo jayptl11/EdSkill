@@ -175,7 +175,9 @@ public class PointLedgerService : IPointLedgerService
         if (type is PointTransactionType.SignupBonus
             or PointTransactionType.AdminGrant
             or PointTransactionType.SessionEarning
-            or PointTransactionType.Purchase)
+            or PointTransactionType.Purchase
+            or PointTransactionType.SubscriptionPurchaseBonus
+            or PointTransactionType.SubscriptionWeeklySessionBonus)
         {
             wallet.TotalEarned += amount;
         }

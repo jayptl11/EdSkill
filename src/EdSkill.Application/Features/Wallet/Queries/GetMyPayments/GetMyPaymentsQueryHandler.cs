@@ -47,6 +47,11 @@ public class GetMyPaymentsQueryHandler : IRequestHandler<GetMyPaymentsQuery, Res
             .Select(item => item.PointPackageId!.Value)
             .Distinct()
             .ToList();
+        var subscriptionPlanIds = items
+            .Where(item => item.SubscriptionPlanId.HasValue)
+            .Select(item => item.SubscriptionPlanId!.Value)
+            .Distinct()
+            .ToList();
 
         var packageLookup = packageIds.Count == 0
             ? new Dictionary<Guid, string>()
@@ -54,12 +59,21 @@ public class GetMyPaymentsQueryHandler : IRequestHandler<GetMyPaymentsQuery, Res
                 .AsNoTracking()
                 .Where(item => packageIds.Contains(item.PointPackageId))
                 .ToDictionaryAsync(item => item.PointPackageId, item => item.Name, cancellationToken);
+        var subscriptionPlanLookup = subscriptionPlanIds.Count == 0
+            ? new Dictionary<Guid, string>()
+            : await _context.SubscriptionPlans
+                .AsNoTracking()
+                .Where(item => subscriptionPlanIds.Contains(item.SubscriptionPlanId))
+                .ToDictionaryAsync(item => item.SubscriptionPlanId, item => item.Name, cancellationToken);
 
         var result = items
             .Select(item => WalletDtoMapper.MapPaymentTransaction(
                 item,
                 item.PointPackageId.HasValue && packageLookup.TryGetValue(item.PointPackageId.Value, out var packageName)
                     ? packageName
+                    : null,
+                item.SubscriptionPlanId.HasValue && subscriptionPlanLookup.TryGetValue(item.SubscriptionPlanId.Value, out var subscriptionPlanName)
+                    ? subscriptionPlanName
                     : null))
             .ToList();
 

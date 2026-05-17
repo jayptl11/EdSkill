@@ -11,6 +11,7 @@ public class WalletPaymentProcessingService : IWalletPaymentProcessingService
     private readonly IApplicationDbContext _context;
     private readonly IDateTimeProvider _dateTimeProvider;
     private readonly IPointLedgerService _pointLedgerService;
+    private readonly ISubscriptionEntitlementService _subscriptionEntitlementService;
     private readonly ITransactionExecutor _transactionExecutor;
     private readonly IVnPayGatewayService _vnPayGatewayService;
 
@@ -18,12 +19,14 @@ public class WalletPaymentProcessingService : IWalletPaymentProcessingService
         IApplicationDbContext context,
         IDateTimeProvider dateTimeProvider,
         IPointLedgerService pointLedgerService,
+        ISubscriptionEntitlementService subscriptionEntitlementService,
         ITransactionExecutor transactionExecutor,
         IVnPayGatewayService vnPayGatewayService)
     {
         _context = context;
         _dateTimeProvider = dateTimeProvider;
         _pointLedgerService = pointLedgerService;
+        _subscriptionEntitlementService = subscriptionEntitlementService;
         _transactionExecutor = transactionExecutor;
         _vnPayGatewayService = vnPayGatewayService;
     }
@@ -57,9 +60,15 @@ public class WalletPaymentProcessingService : IWalletPaymentProcessingService
                 item => item.PointPackageId == payment.PointPackageId.Value,
                 cancellationToken)
             : null;
+        var subscriptionPlan = payment.SubscriptionPlanId.HasValue
+            ? await _context.SubscriptionPlans.FirstOrDefaultAsync(
+                item => item.SubscriptionPlanId == payment.SubscriptionPlanId.Value,
+                cancellationToken)
+            : null;
 
         var rawPayload = JsonSerializer.Serialize(callback.RawData);
         var creditedPoints = pointPackage is null ? 0 : pointPackage.Points + pointPackage.BonusPoints;
+        var subscriptionCreditedPoints = subscriptionPlan?.ImmediateBonusPoints ?? 0;
 
         if (payment.Status != PaymentStatus.Pending)
         {
@@ -69,7 +78,9 @@ public class WalletPaymentProcessingService : IWalletPaymentProcessingService
                     payment.Status,
                     payment.PointPackageId,
                     pointPackage?.Name,
-                    payment.Status == PaymentStatus.Success ? creditedPoints : 0,
+                    payment.SubscriptionPlanId,
+                    subscriptionPlan?.Name,
+                    payment.Status == PaymentStatus.Success ? Math.Max(creditedPoints, subscriptionCreditedPoints) : 0,
                     true));
         }
 
@@ -81,20 +92,31 @@ public class WalletPaymentProcessingService : IWalletPaymentProcessingService
 
             if (callback.Status == PaymentStatus.Success)
             {
-                if (pointPackage == null)
+                if (pointPackage == null && subscriptionPlan == null)
                 {
-                    return Result<WalletPaymentProcessingResult>.Failure("POINT_PACKAGE_NOT_FOUND", "Point package was not found for this payment.");
+                    return Result<WalletPaymentProcessingResult>.Failure("PAYMENT_CALLBACK_INVALID", "Payment transaction does not have a purchase subject.");
                 }
 
                 payment.Status = PaymentStatus.Success;
                 payment.PaidAt = callback.PaidAtUtc ?? _dateTimeProvider.UtcNow;
 
-                var wallet = await _pointLedgerService.GetOrCreateWalletAsync(payment.UserId, ct);
-                var note = $"Purchased package {pointPackage.Name}.";
-                var creditResult = _pointLedgerService.CreditUser(wallet, PointTransactionType.Purchase, creditedPoints, null, note);
-                if (!creditResult.IsSuccess)
+                if (pointPackage != null)
                 {
-                    return Result<WalletPaymentProcessingResult>.Failure(creditResult.ErrorCode!, creditResult.ErrorMessage!);
+                    var wallet = await _pointLedgerService.GetOrCreateWalletAsync(payment.UserId, ct);
+                    var note = $"Purchased package {pointPackage.Name}.";
+                    var creditResult = _pointLedgerService.CreditUser(wallet, PointTransactionType.Purchase, creditedPoints, null, note);
+                    if (!creditResult.IsSuccess)
+                    {
+                        return Result<WalletPaymentProcessingResult>.Failure(creditResult.ErrorCode!, creditResult.ErrorMessage!);
+                    }
+                }
+                else
+                {
+                    var activationResult = await _subscriptionEntitlementService.ActivatePaidSubscriptionAsync(payment, subscriptionPlan!, ct);
+                    if (!activationResult.IsSuccess)
+                    {
+                        return Result<WalletPaymentProcessingResult>.Failure(activationResult.ErrorCode!, activationResult.ErrorMessage!);
+                    }
                 }
             }
             else
@@ -108,7 +130,11 @@ public class WalletPaymentProcessingService : IWalletPaymentProcessingService
                     payment.Status,
                     payment.PointPackageId,
                     pointPackage?.Name,
-                    payment.Status == PaymentStatus.Success ? creditedPoints : 0,
+                    payment.SubscriptionPlanId,
+                    subscriptionPlan?.Name,
+                    payment.Status == PaymentStatus.Success
+                        ? pointPackage is not null ? creditedPoints : subscriptionCreditedPoints
+                        : 0,
                     false));
         }, cancellationToken);
     }

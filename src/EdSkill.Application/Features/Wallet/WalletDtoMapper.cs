@@ -45,12 +45,17 @@ public static class WalletDtoMapper
             package.IsHighlighted);
     }
 
-    public static PaymentTransactionDto MapPaymentTransaction(PaymentTransaction payment, string? packageName)
+    public static PaymentTransactionDto MapPaymentTransaction(
+        PaymentTransaction payment,
+        string? packageName,
+        string? subscriptionPlanName)
     {
         return new PaymentTransactionDto(
             payment.PaymentTransactionId,
             payment.PointPackageId,
             packageName,
+            payment.SubscriptionPlanId,
+            subscriptionPlanName,
             payment.Provider,
             payment.AmountVnd,
             payment.Currency,

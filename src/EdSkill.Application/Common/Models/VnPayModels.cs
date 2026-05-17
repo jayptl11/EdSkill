@@ -30,6 +30,8 @@ public record WalletPaymentProcessingResult(
     PaymentStatus Status,
     Guid? PointPackageId,
     string? PackageName,
+    Guid? SubscriptionPlanId,
+    string? SubscriptionPlanName,
     int CreditedPoints,
     bool AlreadyProcessed
 );

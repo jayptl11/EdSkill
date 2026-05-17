@@ -52,7 +52,9 @@ public record CompanionSearchItemDto(
     int LowestPointCost,
     SessionPricingPreviewDto PricingPreview,
     DateTime NextScheduledAt,
-    IReadOnlyCollection<SessionDto> MatchedOffers
+    IReadOnlyCollection<SessionDto> MatchedOffers,
+    string? SubscriptionBadge,
+    bool HasPriorityVisibility
 );
 
 public record CompanionSearchResultDto(
@@ -119,7 +121,9 @@ public record CompanionPublicProfileDto(
     IReadOnlyCollection<string> Roles,
     CompanionActivitySummaryDto ActivitySummary,
     IReadOnlyCollection<AchievementSummaryDto> Achievements,
-    IReadOnlyCollection<CompanionTeachingSkillDto> TeachingSkills
+    IReadOnlyCollection<CompanionTeachingSkillDto> TeachingSkills,
+    string? SubscriptionBadge,
+    bool HasPriorityVisibility
 );
 
 public record CompanionSkillInfoDto(

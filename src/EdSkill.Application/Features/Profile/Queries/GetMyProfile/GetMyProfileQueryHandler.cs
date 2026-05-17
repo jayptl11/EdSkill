@@ -2,6 +2,7 @@ using EdSkill.Application.Common.Interfaces;
 using EdSkill.Application.Common.Models;
 using EdSkill.Application.Features.Companions;
 using EdSkill.Application.Features.Profile.DTOs;
+using EdSkill.Application.Features.Subscriptions;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -11,13 +12,16 @@ public class GetMyProfileQueryHandler : IRequestHandler<GetMyProfileQuery, Resul
 {
     private readonly IApplicationDbContext _context;
     private readonly ICurrentUserService _currentUserService;
+    private readonly ISubscriptionEntitlementService _subscriptionEntitlementService;
 
     public GetMyProfileQueryHandler(
         IApplicationDbContext context,
-        ICurrentUserService currentUserService)
+        ICurrentUserService currentUserService,
+        ISubscriptionEntitlementService subscriptionEntitlementService)
     {
         _context = context;
         _currentUserService = currentUserService;
+        _subscriptionEntitlementService = subscriptionEntitlementService;
     }
 
     public async Task<Result<ProfileDto>> Handle(GetMyProfileQuery request, CancellationToken cancellationToken)
@@ -37,6 +41,15 @@ public class GetMyProfileQueryHandler : IRequestHandler<GetMyProfileQuery, Resul
         }
 
         var achievements = await CompanionProfileDataLoader.LoadAchievementsAsync(_context, currentUserId, cancellationToken);
-        return Result<ProfileDto>.Success(ProfileDtoMapper.Map(user, user.UserProfile, achievements));
+        var activeSubscriptions = await _subscriptionEntitlementService.GetActiveSubscriptionsAsync(currentUserId, cancellationToken);
+        var entitlements = await _subscriptionEntitlementService.GetResolvedEntitlementsAsync(currentUserId, cancellationToken);
+
+        return Result<ProfileDto>.Success(
+            ProfileDtoMapper.Map(
+                user,
+                user.UserProfile,
+                achievements,
+                activeSubscriptions: activeSubscriptions.Select(SubscriptionDtoMapper.MapActiveSubscription).ToList(),
+                subscriptionEntitlements: SubscriptionDtoMapper.MapEntitlements(entitlements)));
     }
 }

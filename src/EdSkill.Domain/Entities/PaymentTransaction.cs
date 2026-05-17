@@ -9,6 +9,8 @@ public class PaymentTransaction
     public virtual User? User { get; set; }
     public Guid? PointPackageId { get; set; }
     public virtual PointPackage? PointPackage { get; set; }
+    public Guid? SubscriptionPlanId { get; set; }
+    public virtual SubscriptionPlan? SubscriptionPlan { get; set; }
     public PaymentProvider Provider { get; set; } = PaymentProvider.VnPay;
     public string? ProviderTransactionId { get; set; }
     public int AmountVnd { get; set; }
@@ -20,4 +22,5 @@ public class PaymentTransaction
     public string? RawPayload { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+    public virtual UserSubscription? UserSubscription { get; set; }
 }

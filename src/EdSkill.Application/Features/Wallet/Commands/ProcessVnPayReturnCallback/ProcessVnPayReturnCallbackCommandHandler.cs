@@ -28,6 +28,8 @@ public class ProcessVnPayReturnCallbackCommandHandler : IRequestHandler<ProcessV
                 value.PaymentTransactionId,
                 value.PointPackageId,
                 value.PackageName,
+                value.SubscriptionPlanId,
+                value.SubscriptionPlanName,
                 value.Status,
                 value.CreditedPoints,
                 value.AlreadyProcessed));

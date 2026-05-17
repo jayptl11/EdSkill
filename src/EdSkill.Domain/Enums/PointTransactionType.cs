@@ -10,5 +10,7 @@ public enum PointTransactionType
     Refund = 5,
     AdminGrant = 6,
     Held = 7,
-    HoldRelease = 8
+    HoldRelease = 8,
+    SubscriptionPurchaseBonus = 9,
+    SubscriptionWeeklySessionBonus = 10
 }

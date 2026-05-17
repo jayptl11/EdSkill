@@ -13,11 +13,15 @@ namespace EdSkill.Infrastructure.Persistence
         private static readonly DateTime ConfigSeedTimestamp = new(2026, 5, 10, 0, 0, 0, DateTimeKind.Utc);
         private static readonly DateTime LedgerSeedTimestamp = new(2026, 5, 10, 0, 0, 0, DateTimeKind.Utc);
         private static readonly DateTime PointPackageSeedTimestamp = new(2026, 5, 17, 0, 0, 0, DateTimeKind.Utc);
+        private static readonly DateTime SubscriptionPlanSeedTimestamp = new(2026, 5, 17, 0, 0, 0, DateTimeKind.Utc);
         private static readonly Guid PlatformLedgerId = Guid.Parse("90000000-0000-0000-0000-000000000001");
         private static readonly Guid PointPackage1Id = Guid.Parse("91000000-0000-0000-0000-000000000001");
         private static readonly Guid PointPackage2Id = Guid.Parse("91000000-0000-0000-0000-000000000002");
         private static readonly Guid PointPackage3Id = Guid.Parse("91000000-0000-0000-0000-000000000003");
         private static readonly Guid PointPackage4Id = Guid.Parse("91000000-0000-0000-0000-000000000004");
+        private static readonly Guid LearnerProPlanId = Guid.Parse("92000000-0000-0000-0000-000000000001");
+        private static readonly Guid CompanionProPlanId = Guid.Parse("92000000-0000-0000-0000-000000000002");
+        private static readonly Guid MultiRoleProPlanId = Guid.Parse("92000000-0000-0000-0000-000000000003");
 
         public AppDbContext(DbContextOptions<AppDbContext> options) : base(options)
         {
@@ -29,6 +33,8 @@ namespace EdSkill.Infrastructure.Persistence
         public DbSet<PointTransaction> PointTransactions => Set<PointTransaction>();
         public DbSet<PointPackage> PointPackages => Set<PointPackage>();
         public DbSet<PaymentTransaction> PaymentTransactions => Set<PaymentTransaction>();
+        public DbSet<SubscriptionPlan> SubscriptionPlans => Set<SubscriptionPlan>();
+        public DbSet<UserSubscription> UserSubscriptions => Set<UserSubscription>();
         public DbSet<Session> Sessions => Set<Session>();
         public DbSet<SystemConfig> SystemConfigs => Set<SystemConfig>();
         public DbSet<SystemLedgerAccount> SystemLedgerAccounts => Set<SystemLedgerAccount>();
@@ -53,6 +59,8 @@ namespace EdSkill.Infrastructure.Persistence
             modelBuilder.Entity<PointTransaction>().HasKey(e => e.PointTransactionId);
             modelBuilder.Entity<PointPackage>().HasKey(e => e.PointPackageId);
             modelBuilder.Entity<PaymentTransaction>().HasKey(e => e.PaymentTransactionId);
+            modelBuilder.Entity<SubscriptionPlan>().HasKey(e => e.SubscriptionPlanId);
+            modelBuilder.Entity<UserSubscription>().HasKey(e => e.UserSubscriptionId);
             modelBuilder.Entity<Session>().HasKey(e => e.SessionId);
             modelBuilder.Entity<SystemConfig>().HasKey(e => e.Key);
             modelBuilder.Entity<SystemLedgerAccount>().HasKey(e => e.SystemLedgerAccountId);
@@ -155,6 +163,11 @@ namespace EdSkill.Infrastructure.Persistence
                     .WithOne(transaction => transaction.User)
                     .HasForeignKey(transaction => transaction.UserId)
                     .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasMany(u => u.UserSubscriptions)
+                    .WithOne(subscription => subscription.User)
+                    .HasForeignKey(subscription => subscription.UserId)
+                    .OnDelete(DeleteBehavior.Cascade);
 
                 entity.HasMany(u => u.TokenTransactions)
                     .WithOne(transaction => transaction.User)
@@ -427,6 +440,119 @@ namespace EdSkill.Infrastructure.Persistence
                 entity.HasOne(transaction => transaction.PointPackage)
                     .WithMany(package => package.PaymentTransactions)
                     .HasForeignKey(transaction => transaction.PointPackageId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(transaction => transaction.SubscriptionPlan)
+                    .WithMany(plan => plan.PaymentTransactions)
+                    .HasForeignKey(transaction => transaction.SubscriptionPlanId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<SubscriptionPlan>(entity =>
+            {
+                entity.HasIndex(plan => plan.Code).IsUnique();
+                entity.HasIndex(plan => new { plan.IsActive, plan.DisplayOrder });
+                entity.Property(plan => plan.Code).HasMaxLength(64).IsRequired();
+                entity.Property(plan => plan.Name).HasMaxLength(100).IsRequired();
+                entity.Property(plan => plan.TargetRole)
+                    .HasConversion<string>()
+                    .HasMaxLength(32);
+                entity.Property(plan => plan.Currency).HasMaxLength(8).IsRequired();
+                entity.Property(plan => plan.BillingCycle)
+                    .HasConversion<string>()
+                    .HasMaxLength(32);
+                entity.Property(plan => plan.LearnerTokenRewardRatePercent).HasPrecision(5, 2);
+                entity.Property(plan => plan.CompanionTokenRewardRatePercent).HasPrecision(5, 2);
+                entity.Property(plan => plan.CompanionBadgeText).HasMaxLength(100);
+                entity.Property(plan => plan.BenefitsJson).HasColumnType("nvarchar(max)").IsRequired();
+                entity.Property(plan => plan.Currency).HasDefaultValue("VND");
+                entity.Property(plan => plan.BillingCycle).HasDefaultValue(Domain.Enums.SubscriptionBillingCycle.Monthly);
+                entity.Property(plan => plan.IsActive).HasDefaultValue(true);
+                entity.Property(plan => plan.DisplayOrder).HasDefaultValue(0);
+                entity.Property(plan => plan.CreatedAt).HasDefaultValueSql("GETUTCDATE()");
+                entity.Property(plan => plan.UpdatedAt).HasDefaultValueSql("GETUTCDATE()");
+
+                entity.HasData(
+                    new SubscriptionPlan
+                    {
+                        SubscriptionPlanId = LearnerProPlanId,
+                        Code = "learner_pro",
+                        Name = "Learner Pro",
+                        TargetRole = Domain.Enums.SubscriptionTargetRole.Learner,
+                        PriceVnd = 119000,
+                        Currency = "VND",
+                        BillingCycle = Domain.Enums.SubscriptionBillingCycle.Monthly,
+                        ImmediateBonusPoints = 200,
+                        BenefitsJson = "[\"Tang ngay 200 Point\",\"Voucher 75% hang tuan\",\"Khong quang cao\",\"Uu tien matching\",\"Rebook nhanh\"]",
+                        IsActive = true,
+                        DisplayOrder = 1,
+                        CreatedAt = SubscriptionPlanSeedTimestamp,
+                        UpdatedAt = SubscriptionPlanSeedTimestamp
+                    },
+                    new SubscriptionPlan
+                    {
+                        SubscriptionPlanId = CompanionProPlanId,
+                        Code = "companion_pro",
+                        Name = "Companion Pro",
+                        TargetRole = Domain.Enums.SubscriptionTargetRole.Companion,
+                        PriceVnd = 79000,
+                        Currency = "VND",
+                        BillingCycle = Domain.Enums.SubscriptionBillingCycle.Monthly,
+                        CompanionTokenRewardRatePercent = 30m,
+                        CompanionDailySessionLimitOverride = 12,
+                        CompanionBadgeText = "Companion Pro",
+                        HasPriorityVisibility = true,
+                        BenefitsJson = "[\"Ed-Token bonus 30%\",\"Ho so noi bat hon\",\"Uu tien hien thi\",\"Mo nhieu slot hon\",\"Dashboard nang cao\"]",
+                        IsActive = true,
+                        DisplayOrder = 2,
+                        CreatedAt = SubscriptionPlanSeedTimestamp,
+                        UpdatedAt = SubscriptionPlanSeedTimestamp
+                    },
+                    new SubscriptionPlan
+                    {
+                        SubscriptionPlanId = MultiRoleProPlanId,
+                        Code = "multi_role_pro",
+                        Name = "Da nang Pro",
+                        TargetRole = Domain.Enums.SubscriptionTargetRole.MultiRole,
+                        PriceVnd = 179000,
+                        Currency = "VND",
+                        BillingCycle = Domain.Enums.SubscriptionBillingCycle.Monthly,
+                        WeeklyLearnerSessionBonusPoints = 200,
+                        WeeklyCompanionSessionBonusPoints = 200,
+                        LearnerTokenRewardRatePercent = 10m,
+                        CompanionTokenRewardRatePercent = 6m,
+                        CompanionDailySessionLimitOverride = 12,
+                        CompanionBadgeText = "Da nang Pro",
+                        HasPriorityVisibility = true,
+                        BenefitsJson = "[\"200 Point cho buoi hoc dau tien trong tuan\",\"200 Point cho buoi huong dan dau tien trong tuan\",\"Learner token 10%\",\"Companion token 6%\",\"Bao gom quyen loi Learner va Companion\"]",
+                        IsActive = true,
+                        DisplayOrder = 3,
+                        CreatedAt = SubscriptionPlanSeedTimestamp,
+                        UpdatedAt = SubscriptionPlanSeedTimestamp
+                    });
+            });
+
+            modelBuilder.Entity<UserSubscription>(entity =>
+            {
+                entity.Property(subscription => subscription.Status)
+                    .HasConversion<string>()
+                    .HasMaxLength(32);
+                entity.Property(subscription => subscription.CreatedAt).HasDefaultValueSql("GETUTCDATE()");
+                entity.Property(subscription => subscription.UpdatedAt).HasDefaultValueSql("GETUTCDATE()");
+                entity.HasIndex(subscription => new { subscription.UserId, subscription.Status, subscription.ExpiresAt });
+                entity.HasIndex(subscription => subscription.PlanId);
+                entity.HasIndex(subscription => subscription.PaymentTransactionId)
+                    .IsUnique()
+                    .HasFilter("[PaymentTransactionId] IS NOT NULL");
+
+                entity.HasOne(subscription => subscription.Plan)
+                    .WithMany(plan => plan.UserSubscriptions)
+                    .HasForeignKey(subscription => subscription.PlanId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(subscription => subscription.PaymentTransaction)
+                    .WithOne(payment => payment.UserSubscription)
+                    .HasForeignKey<UserSubscription>(subscription => subscription.PaymentTransactionId)
                     .OnDelete(DeleteBehavior.Restrict);
             });
 

@@ -18,6 +18,7 @@ public class CreateSessionOfferCommandHandler : IRequestHandler<CreateSessionOff
     private readonly IDateTimeProvider _dateTimeProvider;
     private readonly ISystemConfigService _systemConfigService;
     private readonly ISessionPricingService _sessionPricingService;
+    private readonly ISubscriptionEntitlementService _subscriptionEntitlementService;
     private readonly ITransactionExecutor _transactionExecutor;
 
     public CreateSessionOfferCommandHandler(
@@ -26,6 +27,7 @@ public class CreateSessionOfferCommandHandler : IRequestHandler<CreateSessionOff
         IDateTimeProvider dateTimeProvider,
         ISystemConfigService systemConfigService,
         ISessionPricingService sessionPricingService,
+        ISubscriptionEntitlementService subscriptionEntitlementService,
         ITransactionExecutor transactionExecutor)
     {
         _context = context;
@@ -33,6 +35,7 @@ public class CreateSessionOfferCommandHandler : IRequestHandler<CreateSessionOff
         _dateTimeProvider = dateTimeProvider;
         _systemConfigService = systemConfigService;
         _sessionPricingService = sessionPricingService;
+        _subscriptionEntitlementService = subscriptionEntitlementService;
         _transactionExecutor = transactionExecutor;
     }
 
@@ -76,6 +79,11 @@ public class CreateSessionOfferCommandHandler : IRequestHandler<CreateSessionOff
             }
 
             var maxPerDay = await _systemConfigService.GetIntValueAsync(SystemConfigKeys.SessionMaxPerDayPerCompanion, ct);
+            var companionEntitlements = await _subscriptionEntitlementService.GetResolvedEntitlementsAsync(companionId, ct);
+            if (companionEntitlements.CompanionDailySessionLimitOverride.HasValue)
+            {
+                maxPerDay = companionEntitlements.CompanionDailySessionLimitOverride.Value;
+            }
             var startDay = request.ScheduledAt.Date;
             var endDay = startDay.AddDays(1);
             var existingCount = await _context.Sessions.CountAsync(

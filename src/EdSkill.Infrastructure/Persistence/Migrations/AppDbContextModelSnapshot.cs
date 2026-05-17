@@ -141,6 +141,9 @@ namespace EdSkill.Infrastructure.Persistence.Migrations
                         .HasMaxLength(32)
                         .HasColumnType("nvarchar(32)");
 
+                    b.Property<Guid?>("SubscriptionPlanId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<DateTime>("UpdatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
@@ -152,6 +155,8 @@ namespace EdSkill.Infrastructure.Persistence.Migrations
                     b.HasKey("PaymentTransactionId");
 
                     b.HasIndex("PointPackageId");
+
+                    b.HasIndex("SubscriptionPlanId");
 
                     b.HasIndex("Provider", "ProviderTransactionId")
                         .IsUnique()
@@ -899,6 +904,171 @@ namespace EdSkill.Infrastructure.Persistence.Migrations
                     b.ToTable("Skills");
                 });
 
+            modelBuilder.Entity("EdSkill.Domain.Entities.SubscriptionPlan", b =>
+                {
+                    b.Property<Guid>("SubscriptionPlanId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("BenefitsJson")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("BillingCycle")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)")
+                        .HasDefaultValue("Monthly");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<string>("CompanionBadgeText")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int?>("CompanionDailySessionLimitOverride")
+                        .HasColumnType("int");
+
+                    b.Property<decimal?>("CompanionTokenRewardRatePercent")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("decimal(5,2)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("GETUTCDATE()");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(8)
+                        .HasColumnType("nvarchar(8)")
+                        .HasDefaultValue("VND");
+
+                    b.Property<int>("DisplayOrder")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
+
+                    b.Property<bool>("HasPriorityVisibility")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("ImmediateBonusPoints")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
+
+                    b.Property<decimal?>("LearnerTokenRewardRatePercent")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("decimal(5,2)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int>("PriceVnd")
+                        .HasColumnType("int");
+
+                    b.Property<string>("TargetRole")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("GETUTCDATE()");
+
+                    b.Property<int>("WeeklyCompanionSessionBonusPoints")
+                        .HasColumnType("int");
+
+                    b.Property<int>("WeeklyLearnerSessionBonusPoints")
+                        .HasColumnType("int");
+
+                    b.HasKey("SubscriptionPlanId");
+
+                    b.HasIndex("Code")
+                        .IsUnique();
+
+                    b.HasIndex("IsActive", "DisplayOrder");
+
+                    b.ToTable("SubscriptionPlans");
+
+                    b.HasData(
+                        new
+                        {
+                            SubscriptionPlanId = new Guid("92000000-0000-0000-0000-000000000001"),
+                            BenefitsJson = "[\"Tang ngay 200 Point\",\"Voucher 75% hang tuan\",\"Khong quang cao\",\"Uu tien matching\",\"Rebook nhanh\"]",
+                            BillingCycle = "Monthly",
+                            Code = "learner_pro",
+                            CreatedAt = new DateTime(2026, 5, 17, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Currency = "VND",
+                            DisplayOrder = 1,
+                            HasPriorityVisibility = false,
+                            ImmediateBonusPoints = 200,
+                            IsActive = true,
+                            Name = "Learner Pro",
+                            PriceVnd = 119000,
+                            TargetRole = "Learner",
+                            UpdatedAt = new DateTime(2026, 5, 17, 0, 0, 0, 0, DateTimeKind.Utc),
+                            WeeklyCompanionSessionBonusPoints = 0,
+                            WeeklyLearnerSessionBonusPoints = 0
+                        },
+                        new
+                        {
+                            SubscriptionPlanId = new Guid("92000000-0000-0000-0000-000000000002"),
+                            BenefitsJson = "[\"Ed-Token bonus 30%\",\"Ho so noi bat hon\",\"Uu tien hien thi\",\"Mo nhieu slot hon\",\"Dashboard nang cao\"]",
+                            BillingCycle = "Monthly",
+                            Code = "companion_pro",
+                            CompanionBadgeText = "Companion Pro",
+                            CompanionDailySessionLimitOverride = 12,
+                            CompanionTokenRewardRatePercent = 30m,
+                            CreatedAt = new DateTime(2026, 5, 17, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Currency = "VND",
+                            DisplayOrder = 2,
+                            HasPriorityVisibility = true,
+                            ImmediateBonusPoints = 0,
+                            IsActive = true,
+                            Name = "Companion Pro",
+                            PriceVnd = 79000,
+                            TargetRole = "Companion",
+                            UpdatedAt = new DateTime(2026, 5, 17, 0, 0, 0, 0, DateTimeKind.Utc),
+                            WeeklyCompanionSessionBonusPoints = 0,
+                            WeeklyLearnerSessionBonusPoints = 0
+                        },
+                        new
+                        {
+                            SubscriptionPlanId = new Guid("92000000-0000-0000-0000-000000000003"),
+                            BenefitsJson = "[\"200 Point cho buoi hoc dau tien trong tuan\",\"200 Point cho buoi huong dan dau tien trong tuan\",\"Learner token 10%\",\"Companion token 6%\",\"Bao gom quyen loi Learner va Companion\"]",
+                            BillingCycle = "Monthly",
+                            Code = "multi_role_pro",
+                            CompanionBadgeText = "Da nang Pro",
+                            CompanionDailySessionLimitOverride = 12,
+                            CompanionTokenRewardRatePercent = 6m,
+                            CreatedAt = new DateTime(2026, 5, 17, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Currency = "VND",
+                            DisplayOrder = 3,
+                            HasPriorityVisibility = true,
+                            ImmediateBonusPoints = 0,
+                            IsActive = true,
+                            LearnerTokenRewardRatePercent = 10m,
+                            Name = "Da nang Pro",
+                            PriceVnd = 179000,
+                            TargetRole = "MultiRole",
+                            UpdatedAt = new DateTime(2026, 5, 17, 0, 0, 0, 0, DateTimeKind.Utc),
+                            WeeklyCompanionSessionBonusPoints = 200,
+                            WeeklyLearnerSessionBonusPoints = 200
+                        });
+                });
+
             modelBuilder.Entity("EdSkill.Domain.Entities.SystemConfig", b =>
                 {
                     b.Property<string>("Key")
@@ -1358,11 +1528,68 @@ namespace EdSkill.Infrastructure.Persistence.Migrations
                     b.ToTable("UserSkills");
                 });
 
+            modelBuilder.Entity("EdSkill.Domain.Entities.UserSubscription", b =>
+                {
+                    b.Property<Guid>("UserSubscriptionId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("CancelledAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("GETUTCDATE()");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("PaymentTransactionId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("PlanId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("StartedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2")
+                        .HasDefaultValueSql("GETUTCDATE()");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("UserSubscriptionId");
+
+                    b.HasIndex("PaymentTransactionId")
+                        .IsUnique()
+                        .HasFilter("[PaymentTransactionId] IS NOT NULL");
+
+                    b.HasIndex("PlanId");
+
+                    b.HasIndex("UserId", "Status", "ExpiresAt");
+
+                    b.ToTable("UserSubscriptions");
+                });
+
             modelBuilder.Entity("EdSkill.Domain.Entities.PaymentTransaction", b =>
                 {
                     b.HasOne("EdSkill.Domain.Entities.PointPackage", "PointPackage")
                         .WithMany("PaymentTransactions")
                         .HasForeignKey("PointPackageId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("EdSkill.Domain.Entities.SubscriptionPlan", "SubscriptionPlan")
+                        .WithMany("PaymentTransactions")
+                        .HasForeignKey("SubscriptionPlanId")
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("EdSkill.Domain.Entities.User", "User")
@@ -1372,6 +1599,8 @@ namespace EdSkill.Infrastructure.Persistence.Migrations
                         .IsRequired();
 
                     b.Navigation("PointPackage");
+
+                    b.Navigation("SubscriptionPlan");
 
                     b.Navigation("User");
                 });
@@ -1539,9 +1768,40 @@ namespace EdSkill.Infrastructure.Persistence.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("EdSkill.Domain.Entities.UserSubscription", b =>
+                {
+                    b.HasOne("EdSkill.Domain.Entities.PaymentTransaction", "PaymentTransaction")
+                        .WithOne("UserSubscription")
+                        .HasForeignKey("EdSkill.Domain.Entities.UserSubscription", "PaymentTransactionId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("EdSkill.Domain.Entities.SubscriptionPlan", "Plan")
+                        .WithMany("UserSubscriptions")
+                        .HasForeignKey("PlanId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("EdSkill.Domain.Entities.User", "User")
+                        .WithMany("UserSubscriptions")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("PaymentTransaction");
+
+                    b.Navigation("Plan");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("EdSkill.Domain.Entities.AchievementDefinition", b =>
                 {
                     b.Navigation("UserAchievements");
+                });
+
+            modelBuilder.Entity("EdSkill.Domain.Entities.PaymentTransaction", b =>
+                {
+                    b.Navigation("UserSubscription");
                 });
 
             modelBuilder.Entity("EdSkill.Domain.Entities.PointPackage", b =>
@@ -1552,6 +1812,13 @@ namespace EdSkill.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("EdSkill.Domain.Entities.Skill", b =>
                 {
                     b.Navigation("UserSkills");
+                });
+
+            modelBuilder.Entity("EdSkill.Domain.Entities.SubscriptionPlan", b =>
+                {
+                    b.Navigation("PaymentTransactions");
+
+                    b.Navigation("UserSubscriptions");
                 });
 
             modelBuilder.Entity("EdSkill.Domain.Entities.User", b =>
@@ -1579,6 +1846,8 @@ namespace EdSkill.Infrastructure.Persistence.Migrations
                     b.Navigation("UserProfile");
 
                     b.Navigation("UserSkills");
+
+                    b.Navigation("UserSubscriptions");
                 });
 #pragma warning restore 612, 618
         }

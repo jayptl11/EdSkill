@@ -11,6 +11,8 @@ namespace EdSkill.Application.Common.Interfaces
         public DbSet<PointTransaction> PointTransactions { get; }
         public DbSet<PointPackage> PointPackages { get; }
         public DbSet<PaymentTransaction> PaymentTransactions { get; }
+        public DbSet<SubscriptionPlan> SubscriptionPlans { get; }
+        public DbSet<UserSubscription> UserSubscriptions { get; }
         public DbSet<Session> Sessions { get; }
         public DbSet<SystemConfig> SystemConfigs { get; }
         public DbSet<SystemLedgerAccount> SystemLedgerAccounts { get; }

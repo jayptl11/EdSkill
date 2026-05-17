@@ -10,11 +10,16 @@ public class GetCompanionPublicProfileQueryHandler : IRequestHandler<GetCompanio
 {
     private readonly IApplicationDbContext _context;
     private readonly ISessionPricingService _sessionPricingService;
+    private readonly ISubscriptionEntitlementService _subscriptionEntitlementService;
 
-    public GetCompanionPublicProfileQueryHandler(IApplicationDbContext context, ISessionPricingService sessionPricingService)
+    public GetCompanionPublicProfileQueryHandler(
+        IApplicationDbContext context,
+        ISessionPricingService sessionPricingService,
+        ISubscriptionEntitlementService subscriptionEntitlementService)
     {
         _context = context;
         _sessionPricingService = sessionPricingService;
+        _subscriptionEntitlementService = subscriptionEntitlementService;
     }
 
     public async Task<Result<CompanionPublicProfileDto>> Handle(GetCompanionPublicProfileQuery request, CancellationToken cancellationToken)
@@ -51,6 +56,7 @@ public class GetCompanionPublicProfileQueryHandler : IRequestHandler<GetCompanio
 
         var achievements = await CompanionProfileDataLoader.LoadAchievementsAsync(_context, request.CompanionId, cancellationToken);
         var reviewData = await CompanionProfileDataLoader.LoadReviewsAsync(_context, request.CompanionId, 1, 1, cancellationToken);
+        var entitlements = await _subscriptionEntitlementService.GetResolvedEntitlementsAsync(request.CompanionId, cancellationToken);
         var totalTeachingMinutes = await _context.Sessions
             .AsNoTracking()
             .Where(session => session.CompanionId == request.CompanionId && session.Status == Domain.Enums.SessionStatus.Completed)
@@ -69,6 +75,8 @@ public class GetCompanionPublicProfileQueryHandler : IRequestHandler<GetCompanio
                 reviewData.TotalReviews,
                 companion.UserProfile.LastActiveAt),
             achievements,
-            CompanionProfileDataLoader.BuildTeachingSkills(companion, availableOffersBySkillId)));
+            CompanionProfileDataLoader.BuildTeachingSkills(companion, availableOffersBySkillId),
+            entitlements.CompanionBadgeText,
+            entitlements.HasPriorityVisibility));
     }
 }

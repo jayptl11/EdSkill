@@ -14,15 +14,18 @@ public class SearchCompanionsQueryHandler : IRequestHandler<SearchCompanionsQuer
     private readonly IApplicationDbContext _context;
     private readonly ICurrentUserService _currentUserService;
     private readonly ISessionPricingService _sessionPricingService;
+    private readonly ISubscriptionEntitlementService _subscriptionEntitlementService;
 
     public SearchCompanionsQueryHandler(
         IApplicationDbContext context,
         ICurrentUserService currentUserService,
-        ISessionPricingService sessionPricingService)
+        ISessionPricingService sessionPricingService,
+        ISubscriptionEntitlementService subscriptionEntitlementService)
     {
         _context = context;
         _currentUserService = currentUserService;
         _sessionPricingService = sessionPricingService;
+        _subscriptionEntitlementService = subscriptionEntitlementService;
     }
 
     public async Task<Result<CompanionSearchResultDto>> Handle(SearchCompanionsQuery request, CancellationToken cancellationToken)
@@ -55,6 +58,7 @@ public class SearchCompanionsQueryHandler : IRequestHandler<SearchCompanionsQuer
             .ThenInclude(userSkill => userSkill.Skill)
             .Where(user => companionIds.Contains(user.UserId))
             .ToListAsync(cancellationToken);
+        var companionEntitlements = await _subscriptionEntitlementService.GetResolvedEntitlementsAsync(companionIds, cancellationToken);
 
         var companionLookup = companions
             .Where(user => user.UserProfile != null)
@@ -114,6 +118,9 @@ public class SearchCompanionsQueryHandler : IRequestHandler<SearchCompanionsQuer
                 var review = reviewStats.TryGetValue(user.UserId, out var value)
                     ? value
                     : (AvgRating: 0d, TotalReviews: 0);
+                var entitlements = companionEntitlements.TryGetValue(user.UserId, out var entitlementValue)
+                    ? entitlementValue
+                    : Common.Models.ResolvedSubscriptionEntitlements.Empty;
 
                 return new CompanionSearchItemDto(
                     user.UserId,
@@ -128,9 +135,12 @@ public class SearchCompanionsQueryHandler : IRequestHandler<SearchCompanionsQuer
                     stats.LowestPointCost,
                     stats.PricingPreview,
                     stats.NextScheduledAt,
-                    stats.Offers);
+                    stats.Offers,
+                    entitlements.CompanionBadgeText,
+                    entitlements.HasPriorityVisibility);
             })
-            .OrderBy(item => item.NextScheduledAt)
+            .OrderByDescending(item => item.HasPriorityVisibility)
+            .ThenBy(item => item.NextScheduledAt)
             .ThenBy(item => item.LowestPointCost)
             .ThenBy(item => item.DisplayName, StringComparer.OrdinalIgnoreCase)
             .ToList();

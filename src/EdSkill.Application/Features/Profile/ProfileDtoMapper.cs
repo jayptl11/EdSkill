@@ -1,7 +1,8 @@
 using EdSkill.Application.Features.Achievements.DTOs;
 using EdSkill.Application.Features.Profile.DTOs;
-using EdSkill.Domain.Enums;
+using EdSkill.Application.Features.Subscriptions.DTOs;
 using EdSkill.Domain.Entities;
+using EdSkill.Domain.Enums;
 
 namespace EdSkill.Application.Features.Profile;
 
@@ -11,7 +12,9 @@ internal static class ProfileDtoMapper
         User user,
         UserProfile profile,
         IReadOnlyCollection<AchievementSummaryDto>? achievements = null,
-        bool includePrivateDetails = true)
+        bool includePrivateDetails = true,
+        IReadOnlyCollection<ActiveSubscriptionSummaryDto>? activeSubscriptions = null,
+        ResolvedSubscriptionEntitlementsDto? subscriptionEntitlements = null)
     {
         var teachingSkills = user.UserSkills
             .Where(userSkill => userSkill.Type == UserSkillType.Teach && userSkill.Skill is not null)
@@ -63,6 +66,8 @@ internal static class ProfileDtoMapper
             profile.TotalSessions,
             profile.LastActiveAt,
             onboardingState.IsComplete,
-            onboardingState.MissingFields);
+            onboardingState.MissingFields,
+            activeSubscriptions ?? Array.Empty<ActiveSubscriptionSummaryDto>(),
+            subscriptionEntitlements);
     }
 }

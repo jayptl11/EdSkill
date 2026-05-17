@@ -23,6 +23,7 @@ public static class DependencyInjection
         services.AddScoped<ITokenLedgerService, TokenLedgerService>();
         services.AddScoped<IAchievementAwardService, AchievementAwardService>();
         services.AddScoped<IWalletPaymentProcessingService, WalletPaymentProcessingService>();
+        services.AddScoped<ISubscriptionEntitlementService, SubscriptionEntitlementService>();
 
         // Add validation behavior
         services.AddScoped(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));

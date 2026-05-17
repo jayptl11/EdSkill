@@ -1,4 +1,5 @@
 using EdSkill.Application.Common.Interfaces;
+using EdSkill.Application.Common.Models;
 using EdSkill.Application.Features.Companions.Queries.SearchCompanions;
 using EdSkill.Domain.Entities;
 using EdSkill.Domain.Enums;
@@ -195,8 +196,16 @@ public class SearchCompanionsQueryHandlerTests
         sessionPricingServiceMock
             .Setup(x => x.GetPlatformMarkupPctAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(25);
+        var subscriptionEntitlementServiceMock = new Mock<ISubscriptionEntitlementService>();
+        subscriptionEntitlementServiceMock
+            .Setup(x => x.GetResolvedEntitlementsAsync(It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<Guid, ResolvedSubscriptionEntitlements>());
 
-        return new SearchCompanionsQueryHandler(contextMock.Object, currentUserServiceMock.Object, sessionPricingServiceMock.Object);
+        return new SearchCompanionsQueryHandler(
+            contextMock.Object,
+            currentUserServiceMock.Object,
+            sessionPricingServiceMock.Object,
+            subscriptionEntitlementServiceMock.Object);
     }
 
     private static Skill CreateSkill(Guid skillId, string name)

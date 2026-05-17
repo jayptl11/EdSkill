@@ -18,21 +18,32 @@ public class GetMyPaymentsQueryHandlerTests
         {
             PointPackageId = Guid.NewGuid(),
             Code = "goi_1",
-            Name = "Gói 1",
+            Name = "GÃ³i 1",
             Points = 500,
             PriceVnd = 59000
+        };
+        var subscriptionPlan = new SubscriptionPlan
+        {
+            SubscriptionPlanId = Guid.NewGuid(),
+            Code = "learner_pro",
+            Name = "Learner Pro",
+            TargetRole = SubscriptionTargetRole.Learner,
+            PriceVnd = 119000,
+            BenefitsJson = "[]"
         };
 
         var payments = new List<PaymentTransaction>
         {
             new() { PaymentTransactionId = Guid.NewGuid(), UserId = userId, PointPackageId = package.PointPackageId, Provider = PaymentProvider.VnPay, AmountVnd = 59000, Currency = "VND", Status = PaymentStatus.Pending, CreatedAt = new DateTime(2026, 5, 17, 8, 0, 0, DateTimeKind.Utc) },
             new() { PaymentTransactionId = Guid.NewGuid(), UserId = userId, PointPackageId = package.PointPackageId, Provider = PaymentProvider.VnPay, AmountVnd = 59000, Currency = "VND", Status = PaymentStatus.Pending, CreatedAt = new DateTime(2026, 5, 17, 9, 0, 0, DateTimeKind.Utc) },
-            new() { PaymentTransactionId = Guid.NewGuid(), UserId = userId, PointPackageId = package.PointPackageId, Provider = PaymentProvider.VnPay, AmountVnd = 59000, Currency = "VND", Status = PaymentStatus.Success, CreatedAt = new DateTime(2026, 5, 17, 10, 0, 0, DateTimeKind.Utc) }
+            new() { PaymentTransactionId = Guid.NewGuid(), UserId = userId, PointPackageId = package.PointPackageId, Provider = PaymentProvider.VnPay, AmountVnd = 59000, Currency = "VND", Status = PaymentStatus.Success, CreatedAt = new DateTime(2026, 5, 17, 10, 0, 0, DateTimeKind.Utc) },
+            new() { PaymentTransactionId = Guid.NewGuid(), UserId = userId, SubscriptionPlanId = subscriptionPlan.SubscriptionPlanId, Provider = PaymentProvider.VnPay, AmountVnd = 119000, Currency = "VND", Status = PaymentStatus.Success, CreatedAt = new DateTime(2026, 5, 17, 11, 0, 0, DateTimeKind.Utc) }
         };
 
         var contextMock = new Mock<IApplicationDbContext>();
         contextMock.SetupGet(x => x.PaymentTransactions).Returns(payments.BuildMockDbSet().Object);
         contextMock.SetupGet(x => x.PointPackages).Returns(new List<PointPackage> { package }.BuildMockDbSet().Object);
+        contextMock.SetupGet(x => x.SubscriptionPlans).Returns(new List<SubscriptionPlan> { subscriptionPlan }.BuildMockDbSet().Object);
 
         var currentUserServiceMock = new Mock<ICurrentUserService>();
         currentUserServiceMock.Setup(x => x.GetUserId()).Returns(userId);
@@ -45,6 +56,7 @@ public class GetMyPaymentsQueryHandlerTests
         result.Value!.Total.Should().Be(2);
         result.Value.Data.Should().ContainSingle();
         result.Value.Data.Single().Status.Should().Be(PaymentStatus.Pending);
-        result.Value.Data.Single().PackageName.Should().Be("Gói 1");
+        result.Value.Data.Single().PackageName.Should().Be("GÃ³i 1");
+        result.Value.Data.Single().SubscriptionPlanName.Should().BeNull();
     }
 }
