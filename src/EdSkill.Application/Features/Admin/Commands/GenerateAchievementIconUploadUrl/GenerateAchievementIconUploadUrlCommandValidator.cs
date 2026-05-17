@@ -12,7 +12,7 @@ public class GenerateAchievementIconUploadUrlCommandValidator : AbstractValidato
         "image/webp"
     };
 
-    private const long MaxFileSizeBytes = 2 * 1024 * 1024;
+    private const long MaxFileSizeBytes = 10 * 1024 * 1024;
 
     public GenerateAchievementIconUploadUrlCommandValidator()
     {

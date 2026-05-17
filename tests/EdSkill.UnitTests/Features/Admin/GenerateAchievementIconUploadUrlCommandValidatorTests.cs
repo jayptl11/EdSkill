@@ -34,4 +34,25 @@ public class GenerateAchievementIconUploadUrlCommandValidatorTests
         result.ShouldHaveValidationErrorFor(x => x.ContentType)
             .WithErrorCode("INVALID_ACHIEVEMENT_ICON_CONTENT_TYPE");
     }
+
+    [Fact]
+    public void Validate_WhenFileSizeExceeds10Mb_ReturnsError()
+    {
+        var command = new GenerateAchievementIconUploadUrlCommand("badge.png", "image/png", 10 * 1024 * 1024 + 1);
+
+        var result = _validator.TestValidate(command);
+
+        result.ShouldHaveValidationErrorFor(x => x.FileSize)
+            .WithErrorCode("INVALID_ACHIEVEMENT_ICON_FILE_SIZE");
+    }
+
+    [Fact]
+    public void Validate_WhenFileSizeIsExactly10Mb_DoesNotReturnError()
+    {
+        var command = new GenerateAchievementIconUploadUrlCommand("badge.png", "image/png", 10 * 1024 * 1024);
+
+        var result = _validator.TestValidate(command);
+
+        result.ShouldNotHaveValidationErrorFor(x => x.FileSize);
+    }
 }
