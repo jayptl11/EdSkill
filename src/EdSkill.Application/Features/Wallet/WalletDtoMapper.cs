@@ -28,4 +28,35 @@ public static class WalletDtoMapper
             transaction.Note,
             transaction.CreatedAt);
     }
+
+    public static PointPackageDto MapPackage(PointPackage package)
+    {
+        return new PointPackageDto(
+            package.PointPackageId,
+            package.Code,
+            package.Name,
+            package.Description,
+            package.Points,
+            package.BonusPoints,
+            package.Points + package.BonusPoints,
+            package.PriceVnd,
+            package.Currency,
+            package.BadgeText,
+            package.IsHighlighted);
+    }
+
+    public static PaymentTransactionDto MapPaymentTransaction(PaymentTransaction payment, string? packageName)
+    {
+        return new PaymentTransactionDto(
+            payment.PaymentTransactionId,
+            payment.PointPackageId,
+            packageName,
+            payment.Provider,
+            payment.AmountVnd,
+            payment.Currency,
+            payment.Status,
+            payment.PaymentUrl,
+            payment.PaidAt,
+            payment.CreatedAt);
+    }
 }

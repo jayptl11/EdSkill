@@ -34,6 +34,8 @@ public static class DependencyInjection
         services.AddScoped<IGoogleAuthService, GoogleAuthService>();
         services.Configure<R2StorageSettings>(configuration.GetSection(R2StorageSettings.SectionName));
         services.AddSingleton<IObjectStorageService, R2ObjectStorageService>();
+        services.Configure<VnPaySettings>(configuration.GetSection(VnPaySettings.SectionName));
+        services.AddScoped<IVnPayGatewayService, VnPayGatewayService>();
         services.AddHttpContextAccessor();
         services.AddScoped<ICurrentUserService, CurrentUserService>();
         services.AddScoped<IDateTimeProvider, DateTimeProvider>();

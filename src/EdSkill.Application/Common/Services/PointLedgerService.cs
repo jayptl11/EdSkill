@@ -172,7 +172,10 @@ public class PointLedgerService : IPointLedgerService
         var heldBefore = wallet.HeldBalance;
 
         wallet.Balance += amount;
-        if (type is PointTransactionType.SignupBonus or PointTransactionType.AdminGrant or PointTransactionType.SessionEarning)
+        if (type is PointTransactionType.SignupBonus
+            or PointTransactionType.AdminGrant
+            or PointTransactionType.SessionEarning
+            or PointTransactionType.Purchase)
         {
             wallet.TotalEarned += amount;
         }

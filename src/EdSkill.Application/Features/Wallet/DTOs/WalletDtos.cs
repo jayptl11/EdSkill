@@ -28,3 +28,58 @@ public record PointTransactionHistoryDto(
     int Page,
     int Limit
 );
+
+public record PointPackageDto(
+    Guid PackageId,
+    string Code,
+    string Name,
+    string? Description,
+    int Points,
+    int BonusPoints,
+    int TotalPoints,
+    int PriceVnd,
+    string Currency,
+    string? BadgeText,
+    bool IsHighlighted
+);
+
+public record PointPackageListDto(IReadOnlyCollection<PointPackageDto> Data);
+
+public record CreatePointPurchaseRequest(Guid PackageId);
+
+public record CreatePointPurchaseResultDto(
+    Guid PaymentTransactionId,
+    string PaymentUrl,
+    DateTime ExpiresAt
+);
+
+public record PaymentTransactionDto(
+    Guid PaymentTransactionId,
+    Guid? PackageId,
+    string? PackageName,
+    PaymentProvider Provider,
+    int AmountVnd,
+    string Currency,
+    PaymentStatus Status,
+    string? PaymentUrl,
+    DateTime? PaidAt,
+    DateTime CreatedAt
+);
+
+public record PaymentTransactionHistoryDto(
+    IReadOnlyCollection<PaymentTransactionDto> Data,
+    int Total,
+    int Page,
+    int Limit
+);
+
+public record VnPayReturnResultDto(
+    Guid PaymentTransactionId,
+    Guid? PackageId,
+    string? PackageName,
+    PaymentStatus Status,
+    int CreditedPoints,
+    bool AlreadyProcessed
+);
+
+public record VnPayIpnResponseDto(string RspCode, string Message);

@@ -12,7 +12,12 @@ namespace EdSkill.Infrastructure.Persistence
     {
         private static readonly DateTime ConfigSeedTimestamp = new(2026, 5, 10, 0, 0, 0, DateTimeKind.Utc);
         private static readonly DateTime LedgerSeedTimestamp = new(2026, 5, 10, 0, 0, 0, DateTimeKind.Utc);
+        private static readonly DateTime PointPackageSeedTimestamp = new(2026, 5, 17, 0, 0, 0, DateTimeKind.Utc);
         private static readonly Guid PlatformLedgerId = Guid.Parse("90000000-0000-0000-0000-000000000001");
+        private static readonly Guid PointPackage1Id = Guid.Parse("91000000-0000-0000-0000-000000000001");
+        private static readonly Guid PointPackage2Id = Guid.Parse("91000000-0000-0000-0000-000000000002");
+        private static readonly Guid PointPackage3Id = Guid.Parse("91000000-0000-0000-0000-000000000003");
+        private static readonly Guid PointPackage4Id = Guid.Parse("91000000-0000-0000-0000-000000000004");
 
         public AppDbContext(DbContextOptions<AppDbContext> options) : base(options)
         {
@@ -22,6 +27,8 @@ namespace EdSkill.Infrastructure.Persistence
         public DbSet<UserProfile> UserProfiles => Set<UserProfile>();
         public DbSet<PointWallet> PointWallets => Set<PointWallet>();
         public DbSet<PointTransaction> PointTransactions => Set<PointTransaction>();
+        public DbSet<PointPackage> PointPackages => Set<PointPackage>();
+        public DbSet<PaymentTransaction> PaymentTransactions => Set<PaymentTransaction>();
         public DbSet<Session> Sessions => Set<Session>();
         public DbSet<SystemConfig> SystemConfigs => Set<SystemConfig>();
         public DbSet<SystemLedgerAccount> SystemLedgerAccounts => Set<SystemLedgerAccount>();
@@ -44,6 +51,8 @@ namespace EdSkill.Infrastructure.Persistence
             modelBuilder.Entity<UserProfile>().HasKey(e => e.ProfileId);
             modelBuilder.Entity<PointWallet>().HasKey(e => e.PointWalletId);
             modelBuilder.Entity<PointTransaction>().HasKey(e => e.PointTransactionId);
+            modelBuilder.Entity<PointPackage>().HasKey(e => e.PointPackageId);
+            modelBuilder.Entity<PaymentTransaction>().HasKey(e => e.PaymentTransactionId);
             modelBuilder.Entity<Session>().HasKey(e => e.SessionId);
             modelBuilder.Entity<SystemConfig>().HasKey(e => e.Key);
             modelBuilder.Entity<SystemLedgerAccount>().HasKey(e => e.SystemLedgerAccountId);
@@ -138,6 +147,11 @@ namespace EdSkill.Infrastructure.Persistence
                     .OnDelete(DeleteBehavior.Cascade);
 
                 entity.HasMany(u => u.PointTransactions)
+                    .WithOne(transaction => transaction.User)
+                    .HasForeignKey(transaction => transaction.UserId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasMany(u => u.PaymentTransactions)
                     .WithOne(transaction => transaction.User)
                     .HasForeignKey(transaction => transaction.UserId)
                     .OnDelete(DeleteBehavior.Restrict);
@@ -302,6 +316,117 @@ namespace EdSkill.Infrastructure.Persistence
                 entity.HasOne(transaction => transaction.Session)
                     .WithMany()
                     .HasForeignKey(transaction => transaction.SessionId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<PointPackage>(entity =>
+            {
+                entity.HasIndex(package => package.Code).IsUnique();
+                entity.HasIndex(package => new { package.IsDeleted, package.IsActive, package.DisplayOrder });
+                entity.Property(package => package.Code).HasMaxLength(64).IsRequired();
+                entity.Property(package => package.Name).HasMaxLength(100).IsRequired();
+                entity.Property(package => package.Currency).HasMaxLength(8).IsRequired();
+                entity.Property(package => package.Description).HasMaxLength(500);
+                entity.Property(package => package.BadgeText).HasMaxLength(100);
+                entity.Property(package => package.BonusPoints).HasDefaultValue(0);
+                entity.Property(package => package.Currency).HasDefaultValue("VND");
+                entity.Property(package => package.IsActive).HasDefaultValue(true);
+                entity.Property(package => package.IsDeleted).HasDefaultValue(false);
+                entity.Property(package => package.IsHighlighted).HasDefaultValue(false);
+                entity.Property(package => package.DisplayOrder).HasDefaultValue(0);
+                entity.Property(package => package.CreatedAt).HasDefaultValueSql("GETUTCDATE()");
+                entity.Property(package => package.UpdatedAt).HasDefaultValueSql("GETUTCDATE()");
+
+                entity.HasData(
+                    new PointPackage
+                    {
+                        PointPackageId = PointPackage1Id,
+                        Code = "goi_1",
+                        Name = "Gói 1",
+                        Points = 500,
+                        BonusPoints = 0,
+                        PriceVnd = 59000,
+                        Currency = "VND",
+                        Description = "Gói nạp 500 Points.",
+                        DisplayOrder = 1,
+                        IsActive = true,
+                        IsDeleted = false,
+                        CreatedAt = PointPackageSeedTimestamp,
+                        UpdatedAt = PointPackageSeedTimestamp
+                    },
+                    new PointPackage
+                    {
+                        PointPackageId = PointPackage2Id,
+                        Code = "goi_2",
+                        Name = "Gói 2",
+                        Points = 1000,
+                        BonusPoints = 0,
+                        PriceVnd = 99000,
+                        Currency = "VND",
+                        Description = "Gói nạp 1.000 Points.",
+                        DisplayOrder = 2,
+                        IsActive = true,
+                        IsDeleted = false,
+                        CreatedAt = PointPackageSeedTimestamp,
+                        UpdatedAt = PointPackageSeedTimestamp
+                    },
+                    new PointPackage
+                    {
+                        PointPackageId = PointPackage3Id,
+                        Code = "goi_3",
+                        Name = "Gói 3",
+                        Points = 2000,
+                        BonusPoints = 0,
+                        PriceVnd = 169000,
+                        Currency = "VND",
+                        Description = "Gói nạp 2.000 Points.",
+                        DisplayOrder = 3,
+                        IsActive = true,
+                        IsDeleted = false,
+                        CreatedAt = PointPackageSeedTimestamp,
+                        UpdatedAt = PointPackageSeedTimestamp
+                    },
+                    new PointPackage
+                    {
+                        PointPackageId = PointPackage4Id,
+                        Code = "goi_4",
+                        Name = "Gói 4",
+                        Points = 5000,
+                        BonusPoints = 0,
+                        PriceVnd = 379000,
+                        Currency = "VND",
+                        Description = "Gói nạp 5.000 Points.",
+                        DisplayOrder = 4,
+                        IsActive = true,
+                        IsDeleted = false,
+                        CreatedAt = PointPackageSeedTimestamp,
+                        UpdatedAt = PointPackageSeedTimestamp
+                    });
+            });
+
+            modelBuilder.Entity<PaymentTransaction>(entity =>
+            {
+                entity.Property(transaction => transaction.Provider)
+                    .HasConversion<string>()
+                    .HasMaxLength(32);
+                entity.Property(transaction => transaction.ProviderTransactionId).HasMaxLength(128);
+                entity.Property(transaction => transaction.Currency).HasMaxLength(8).IsRequired();
+                entity.Property(transaction => transaction.Status)
+                    .HasConversion<string>()
+                    .HasMaxLength(32);
+                entity.Property(transaction => transaction.PaymentUrl).HasMaxLength(2048);
+                entity.Property(transaction => transaction.RawPayload).HasColumnType("nvarchar(max)");
+                entity.Property(transaction => transaction.Currency).HasDefaultValue("VND");
+                entity.Property(transaction => transaction.CreatedAt).HasDefaultValueSql("GETUTCDATE()");
+                entity.Property(transaction => transaction.UpdatedAt).HasDefaultValueSql("GETUTCDATE()");
+                entity.HasIndex(transaction => new { transaction.UserId, transaction.Status, transaction.CreatedAt });
+                entity.HasIndex(transaction => new { transaction.Provider, transaction.ProviderTransactionId })
+                    .IsUnique()
+                    .HasFilter("[ProviderTransactionId] IS NOT NULL AND [Status] = 'Success'");
+
+                entity.HasOne(transaction => transaction.PointPackage)
+                    .WithMany(package => package.PaymentTransactions)
+                    .HasForeignKey(transaction => transaction.PointPackageId)
                     .OnDelete(DeleteBehavior.Restrict);
             });
 
