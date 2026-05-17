@@ -185,12 +185,12 @@ public class VnPayGatewayService : IVnPayGatewayService
         var inputBytes = Encoding.UTF8.GetBytes(input);
         using var hmac = new HMACSHA512(keyBytes);
         var hashBytes = hmac.ComputeHash(inputBytes);
-        return Convert.ToHexString(hashBytes);
+        return Convert.ToHexString(hashBytes).ToLowerInvariant();
     }
 
     private static string Encode(string value)
     {
-        return WebUtility.UrlEncode(value ?? string.Empty);
+        return Uri.EscapeDataString(value ?? string.Empty);
     }
 
     private static DateTime ConvertToVietnamTime(DateTime utcDateTime)
