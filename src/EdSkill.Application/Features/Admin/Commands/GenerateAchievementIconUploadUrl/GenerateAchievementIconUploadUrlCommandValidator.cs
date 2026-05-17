@@ -7,6 +7,7 @@ public class GenerateAchievementIconUploadUrlCommandValidator : AbstractValidato
     private static readonly HashSet<string> AllowedContentTypes = new(StringComparer.OrdinalIgnoreCase)
     {
         "image/jpeg",
+        "image/jpg",
         "image/png",
         "image/webp"
     };

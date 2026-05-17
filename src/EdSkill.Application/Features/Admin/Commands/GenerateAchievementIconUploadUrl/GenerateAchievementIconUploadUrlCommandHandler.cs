@@ -11,6 +11,7 @@ public partial class GenerateAchievementIconUploadUrlCommandHandler : IRequestHa
     private static readonly IReadOnlyDictionary<string, string> ContentTypeExtensions = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
     {
         ["image/jpeg"] = ".jpg",
+        ["image/jpg"] = ".jpg",
         ["image/png"] = ".png",
         ["image/webp"] = ".webp"
     };
