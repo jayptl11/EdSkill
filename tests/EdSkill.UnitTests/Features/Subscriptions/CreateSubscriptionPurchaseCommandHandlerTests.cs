@@ -30,8 +30,10 @@ public class CreateSubscriptionPurchaseCommandHandlerTests
         dateTimeProviderMock.SetupGet(x => x.UtcNow).Returns(now);
 
         var vnPayGatewayMock = new Mock<IVnPayGatewayService>();
+        VnPayCreatePaymentRequest? capturedRequest = null;
         vnPayGatewayMock
             .Setup(x => x.CreatePaymentUrl(It.IsAny<VnPayCreatePaymentRequest>()))
+            .Callback<VnPayCreatePaymentRequest>(request => capturedRequest = request)
             .Returns(Result<VnPayCreatePaymentResult>.Success(
                 new VnPayCreatePaymentResult("https://sandbox.vnpay.test/sub", now.AddMinutes(15), Guid.NewGuid().ToString("N"))));
 
@@ -47,6 +49,9 @@ public class CreateSubscriptionPurchaseCommandHandlerTests
         payments.Should().ContainSingle();
         payments[0].SubscriptionPlanId.Should().Be(plan.SubscriptionPlanId);
         payments[0].PaymentUrl.Should().Be("https://sandbox.vnpay.test/sub");
+        capturedRequest.Should().NotBeNull();
+        capturedRequest!.Purpose.Should().Be(VnPayPaymentPurpose.SubscriptionPurchase);
+        capturedRequest.OrderDescription.Should().Be($"Mua goi {plan.Name}");
     }
 
     [Fact]
@@ -124,8 +129,10 @@ public class CreateSubscriptionPurchaseCommandHandlerTests
         dateTimeProviderMock.SetupGet(x => x.UtcNow).Returns(now);
 
         var vnPayGatewayMock = new Mock<IVnPayGatewayService>();
+        VnPayCreatePaymentRequest? capturedRequest = null;
         vnPayGatewayMock
             .Setup(x => x.CreatePaymentUrl(It.IsAny<VnPayCreatePaymentRequest>()))
+            .Callback<VnPayCreatePaymentRequest>(request => capturedRequest = request)
             .Returns(Result<VnPayCreatePaymentResult>.Success(
                 new VnPayCreatePaymentResult("https://sandbox.vnpay.test/sub", now.AddMinutes(15), Guid.NewGuid().ToString("N"))));
 
@@ -140,6 +147,8 @@ public class CreateSubscriptionPurchaseCommandHandlerTests
         result.IsSuccess.Should().BeTrue();
         payments.Should().ContainSingle();
         payments[0].SubscriptionPlanId.Should().Be(companionPlan.SubscriptionPlanId);
+        capturedRequest.Should().NotBeNull();
+        capturedRequest!.Purpose.Should().Be(VnPayPaymentPurpose.SubscriptionPurchase);
     }
 
     private static SubscriptionPlan CreatePlan(SubscriptionTargetRole targetRole, string code, int priceVnd)

@@ -2,12 +2,19 @@ using EdSkill.Domain.Enums;
 
 namespace EdSkill.Application.Common.Models;
 
+public enum VnPayPaymentPurpose
+{
+    PointPurchase = 0,
+    SubscriptionPurchase = 1
+}
+
 public record VnPayCreatePaymentRequest(
     Guid PaymentTransactionId,
     Guid UserId,
     int AmountVnd,
     string OrderDescription,
-    DateTime CreatedAtUtc
+    DateTime CreatedAtUtc,
+    VnPayPaymentPurpose Purpose
 );
 
 public record VnPayCreatePaymentResult(

@@ -74,7 +74,8 @@ public class CreatePointPurchaseCommandHandler : IRequestHandler<CreatePointPurc
                 userId,
                 payment.AmountVnd,
                 $"Nap diem {package.Name}",
-                utcNow));
+                utcNow,
+                VnPayPaymentPurpose.PointPurchase));
 
         if (!paymentUrlResult.IsSuccess)
         {

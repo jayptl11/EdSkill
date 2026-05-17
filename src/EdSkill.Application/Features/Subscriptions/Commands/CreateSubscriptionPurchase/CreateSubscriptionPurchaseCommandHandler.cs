@@ -96,8 +96,9 @@ public class CreateSubscriptionPurchaseCommandHandler : IRequestHandler<CreateSu
                 payment.PaymentTransactionId,
                 userId,
                 payment.AmountVnd,
-                $"Dang ky {plan.Name}",
-                utcNow));
+                $"Mua goi {plan.Name}",
+                utcNow,
+                VnPayPaymentPurpose.SubscriptionPurchase));
         if (!paymentUrlResult.IsSuccess)
         {
             return Result<CreateSubscriptionPurchaseResultDto>.Failure(paymentUrlResult.ErrorCode!, paymentUrlResult.ErrorMessage!);

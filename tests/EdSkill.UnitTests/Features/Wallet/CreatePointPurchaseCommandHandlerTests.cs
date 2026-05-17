@@ -43,8 +43,10 @@ public class CreatePointPurchaseCommandHandlerTests
         dateTimeProviderMock.SetupGet(x => x.UtcNow).Returns(now);
 
         var vnPayGatewayMock = new Mock<IVnPayGatewayService>();
+        VnPayCreatePaymentRequest? capturedRequest = null;
         vnPayGatewayMock
             .Setup(x => x.CreatePaymentUrl(It.IsAny<VnPayCreatePaymentRequest>()))
+            .Callback<VnPayCreatePaymentRequest>(request => capturedRequest = request)
             .Returns(Result<VnPayCreatePaymentResult>.Success(
                 new VnPayCreatePaymentResult("https://sandbox.vnpay.test/pay", now.AddMinutes(15), Guid.NewGuid().ToString("N"))));
 
@@ -60,6 +62,9 @@ public class CreatePointPurchaseCommandHandlerTests
         payments.Should().ContainSingle();
         payments[0].PointPackageId.Should().Be(package.PointPackageId);
         payments[0].PaymentUrl.Should().Be("https://sandbox.vnpay.test/pay");
+        capturedRequest.Should().NotBeNull();
+        capturedRequest!.Purpose.Should().Be(VnPayPaymentPurpose.PointPurchase);
+        capturedRequest.OrderDescription.Should().Be($"Nap diem {package.Name}");
     }
 
     [Fact]
