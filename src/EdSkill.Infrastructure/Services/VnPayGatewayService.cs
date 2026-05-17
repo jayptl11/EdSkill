@@ -27,12 +27,11 @@ public class VnPayGatewayService : IVnPayGatewayService
 
     public Result<VnPayCreatePaymentResult> CreatePaymentUrl(VnPayCreatePaymentRequest request)
     {
-        var (returnUrl, ipnUrl) = ResolveCallbackUrls(request.Purpose);
+        var returnUrl = ResolveReturnUrl(request.Purpose);
         if (string.IsNullOrWhiteSpace(_settings.TerminalCode)
             || string.IsNullOrWhiteSpace(_settings.HashSecret)
             || string.IsNullOrWhiteSpace(_settings.BaseUrl)
-            || string.IsNullOrWhiteSpace(returnUrl)
-            || string.IsNullOrWhiteSpace(ipnUrl))
+            || string.IsNullOrWhiteSpace(returnUrl))
         {
             return Result<VnPayCreatePaymentResult>.Failure("PAYMENT_PROVIDER_NOT_CONFIGURED", "VNPay settings are missing.");
         }
@@ -41,6 +40,7 @@ public class VnPayGatewayService : IVnPayGatewayService
         var expiresAt = createTime.AddMinutes(_settings.ExpireMinutes <= 0 ? 15 : _settings.ExpireMinutes);
         var transactionRef = request.PaymentTransactionId.ToString("N");
         var normalizedOrderInfo = NormalizeOrderInfo(request.OrderDescription);
+        var clientIpAddress = NormalizeClientIpAddress(request.ClientIpAddress);
 
         var parameters = new SortedDictionary<string, string>(StringComparer.Ordinal)
         {
@@ -50,7 +50,7 @@ public class VnPayGatewayService : IVnPayGatewayService
             ["vnp_Amount"] = (request.AmountVnd * 100L).ToString(CultureInfo.InvariantCulture),
             ["vnp_CreateDate"] = createTime.ToString("yyyyMMddHHmmss", CultureInfo.InvariantCulture),
             ["vnp_CurrCode"] = "VND",
-            ["vnp_IpAddr"] = "127.0.0.1",
+            ["vnp_IpAddr"] = clientIpAddress,
             ["vnp_Locale"] = "vn",
             ["vnp_OrderInfo"] = normalizedOrderInfo,
             ["vnp_OrderType"] = "other",
@@ -58,11 +58,6 @@ public class VnPayGatewayService : IVnPayGatewayService
             ["vnp_TxnRef"] = transactionRef,
             ["vnp_ExpireDate"] = expiresAt.ToString("yyyyMMddHHmmss", CultureInfo.InvariantCulture)
         };
-
-        if (!string.IsNullOrWhiteSpace(ipnUrl))
-        {
-            parameters["vnp_IpnUrl"] = ipnUrl;
-        }
 
         var query = BuildQueryString(parameters);
         var hashData = BuildHashData(parameters);
@@ -213,17 +208,13 @@ public class VnPayGatewayService : IVnPayGatewayService
         return Uri.EscapeDataString(value ?? string.Empty);
     }
 
-    private (string ReturnUrl, string IpnUrl) ResolveCallbackUrls(VnPayPaymentPurpose purpose)
+    private string ResolveReturnUrl(VnPayPaymentPurpose purpose)
     {
         return purpose switch
         {
-            VnPayPaymentPurpose.PointPurchase => (
-                _settings.PointPurchaseReturnUrl,
-                _settings.PointPurchaseIpnUrl),
-            VnPayPaymentPurpose.SubscriptionPurchase => (
-                _settings.SubscriptionPurchaseReturnUrl,
-                _settings.SubscriptionPurchaseIpnUrl),
-            _ => (string.Empty, string.Empty)
+            VnPayPaymentPurpose.PointPurchase => _settings.PointPurchaseReturnUrl,
+            VnPayPaymentPurpose.SubscriptionPurchase => _settings.SubscriptionPurchaseReturnUrl,
+            _ => string.Empty
         };
     }
 
@@ -253,6 +244,11 @@ public class VnPayGatewayService : IVnPayGatewayService
 
         var sanitized = MultiWhitespaceRegex.Replace(builder.ToString(), " ").Trim();
         return string.IsNullOrWhiteSpace(sanitized) ? "EdSkill payment" : sanitized;
+    }
+
+    private static string NormalizeClientIpAddress(string? value)
+    {
+        return string.IsNullOrWhiteSpace(value) ? "127.0.0.1" : value.Trim();
     }
 
     private static DateTime ConvertToVietnamTime(DateTime utcDateTime)

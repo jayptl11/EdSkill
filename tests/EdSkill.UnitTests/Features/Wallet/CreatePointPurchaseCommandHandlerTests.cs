@@ -18,7 +18,7 @@ public class CreatePointPurchaseCommandHandlerTests
         {
             PointPackageId = Guid.NewGuid(),
             Code = "goi_1",
-            Name = "Gói 1",
+            Name = "Goi 1",
             Points = 500,
             PriceVnd = 59000,
             Currency = "VND",
@@ -42,6 +42,9 @@ public class CreatePointPurchaseCommandHandlerTests
         var now = new DateTime(2026, 5, 17, 10, 0, 0, DateTimeKind.Utc);
         dateTimeProviderMock.SetupGet(x => x.UtcNow).Returns(now);
 
+        var requestContextServiceMock = new Mock<IRequestContextService>();
+        requestContextServiceMock.Setup(x => x.GetClientIpAddress()).Returns("203.0.113.10");
+
         var vnPayGatewayMock = new Mock<IVnPayGatewayService>();
         VnPayCreatePaymentRequest? capturedRequest = null;
         vnPayGatewayMock
@@ -54,6 +57,7 @@ public class CreatePointPurchaseCommandHandlerTests
             contextMock.Object,
             currentUserServiceMock.Object,
             dateTimeProviderMock.Object,
+            requestContextServiceMock.Object,
             vnPayGatewayMock.Object);
 
         var result = await handler.Handle(new CreatePointPurchaseCommand(package.PointPackageId), CancellationToken.None);
@@ -65,6 +69,7 @@ public class CreatePointPurchaseCommandHandlerTests
         capturedRequest.Should().NotBeNull();
         capturedRequest!.Purpose.Should().Be(VnPayPaymentPurpose.PointPurchase);
         capturedRequest.OrderDescription.Should().Be($"Nap diem {package.Name}");
+        capturedRequest.ClientIpAddress.Should().Be("203.0.113.10");
     }
 
     [Fact]
@@ -75,7 +80,7 @@ public class CreatePointPurchaseCommandHandlerTests
         {
             PointPackageId = Guid.NewGuid(),
             Code = "goi_1",
-            Name = "Gói 1",
+            Name = "Goi 1",
             Points = 500,
             PriceVnd = 59000,
             Currency = "VND",
@@ -92,11 +97,14 @@ public class CreatePointPurchaseCommandHandlerTests
         var dateTimeProviderMock = new Mock<IDateTimeProvider>();
         dateTimeProviderMock.SetupGet(x => x.UtcNow).Returns(DateTime.UtcNow);
 
+        var requestContextServiceMock = new Mock<IRequestContextService>();
         var vnPayGatewayMock = new Mock<IVnPayGatewayService>();
+
         var handler = new CreatePointPurchaseCommandHandler(
             contextMock.Object,
             currentUserServiceMock.Object,
             dateTimeProviderMock.Object,
+            requestContextServiceMock.Object,
             vnPayGatewayMock.Object);
 
         var result = await handler.Handle(new CreatePointPurchaseCommand(package.PointPackageId), CancellationToken.None);
@@ -113,7 +121,7 @@ public class CreatePointPurchaseCommandHandlerTests
         {
             PointPackageId = Guid.NewGuid(),
             Code = "goi_1",
-            Name = "Gói 1",
+            Name = "Goi 1",
             Points = 500,
             PriceVnd = 59000,
             Currency = "VND",
@@ -130,11 +138,14 @@ public class CreatePointPurchaseCommandHandlerTests
         var dateTimeProviderMock = new Mock<IDateTimeProvider>();
         dateTimeProviderMock.SetupGet(x => x.UtcNow).Returns(DateTime.UtcNow);
 
+        var requestContextServiceMock = new Mock<IRequestContextService>();
         var vnPayGatewayMock = new Mock<IVnPayGatewayService>();
+
         var handler = new CreatePointPurchaseCommandHandler(
             contextMock.Object,
             currentUserServiceMock.Object,
             dateTimeProviderMock.Object,
+            requestContextServiceMock.Object,
             vnPayGatewayMock.Object);
 
         var result = await handler.Handle(new CreatePointPurchaseCommand(package.PointPackageId), CancellationToken.None);

@@ -38,6 +38,7 @@ public static class DependencyInjection
         services.AddScoped<IVnPayGatewayService, VnPayGatewayService>();
         services.AddHttpContextAccessor();
         services.AddScoped<ICurrentUserService, CurrentUserService>();
+        services.AddScoped<IRequestContextService, RequestContextService>();
         services.AddScoped<IDateTimeProvider, DateTimeProvider>();
         services.AddScoped<ITransactionExecutor, TransactionExecutor>();
 

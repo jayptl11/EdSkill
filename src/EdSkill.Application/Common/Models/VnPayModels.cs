@@ -14,7 +14,8 @@ public record VnPayCreatePaymentRequest(
     int AmountVnd,
     string OrderDescription,
     DateTime CreatedAtUtc,
-    VnPayPaymentPurpose Purpose
+    VnPayPaymentPurpose Purpose,
+    string ClientIpAddress
 );
 
 public record VnPayCreatePaymentResult(

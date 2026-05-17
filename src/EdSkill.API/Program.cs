@@ -1,6 +1,7 @@
 ﻿using EdSkill.API.Middleware;
 using EdSkill.Application;
 using EdSkill.Infrastructure;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -73,6 +74,10 @@ app.UseSwagger();
 app.UseSwaggerUI();
 //}
 
+app.UseForwardedHeaders(new ForwardedHeadersOptions
+{
+    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+});
 app.UseHttpsRedirection();
 app.UseCors("AllowFrontend");
 app.UseAuthentication();

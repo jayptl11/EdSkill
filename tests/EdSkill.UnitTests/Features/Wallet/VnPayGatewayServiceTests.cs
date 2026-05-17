@@ -1,4 +1,3 @@
-using System.Collections.Specialized;
 using EdSkill.Application.Common.Models;
 using EdSkill.Infrastructure.Services;
 using EdSkill.Infrastructure.Settings;
@@ -11,7 +10,7 @@ namespace EdSkill.UnitTests.Features.Wallet;
 public class VnPayGatewayServiceTests
 {
     [Fact]
-    public void CreatePaymentUrl_WhenPointPurchase_UsesPointCallbacksAndSanitizesOrderInfo()
+    public void CreatePaymentUrl_WhenPointPurchase_UsesPointReturnUrlAndSanitizesOrderInfo()
     {
         var settings = CreateSettings();
         var service = new VnPayGatewayService(Options.Create(settings), NullLogger<VnPayGatewayService>.Instance);
@@ -22,19 +21,21 @@ public class VnPayGatewayServiceTests
             59000,
             "Nap diem Gói 1!!!",
             new DateTime(2026, 5, 18, 2, 0, 0, DateTimeKind.Utc),
-            VnPayPaymentPurpose.PointPurchase));
+            VnPayPaymentPurpose.PointPurchase,
+            "203.0.113.10"));
 
         result.IsSuccess.Should().BeTrue();
         var query = ParseQuery(result.Value!.PaymentUrl);
         query["vnp_ReturnUrl"].Should().Be(settings.PointPurchaseReturnUrl);
-        query["vnp_IpnUrl"].Should().Be(settings.PointPurchaseIpnUrl);
+        query.Should().NotContainKey("vnp_IpnUrl");
+        query["vnp_IpAddr"].Should().Be("203.0.113.10");
         query["vnp_OrderInfo"].Should().Be("Nap diem Goi 1");
         query["vnp_CreateDate"].Should().Be("20260518090000");
         query["vnp_SecureHash"].Should().NotBeNullOrWhiteSpace();
     }
 
     [Fact]
-    public void CreatePaymentUrl_WhenSubscriptionPurchase_UsesSubscriptionCallbacks()
+    public void CreatePaymentUrl_WhenSubscriptionPurchase_UsesSubscriptionReturnUrl()
     {
         var settings = CreateSettings();
         var service = new VnPayGatewayService(Options.Create(settings), NullLogger<VnPayGatewayService>.Instance);
@@ -45,12 +46,14 @@ public class VnPayGatewayServiceTests
             79000,
             "Mua goi Companion Pro",
             new DateTime(2026, 5, 18, 2, 0, 0, DateTimeKind.Utc),
-            VnPayPaymentPurpose.SubscriptionPurchase));
+            VnPayPaymentPurpose.SubscriptionPurchase,
+            "198.51.100.25"));
 
         result.IsSuccess.Should().BeTrue();
         var query = ParseQuery(result.Value!.PaymentUrl);
         query["vnp_ReturnUrl"].Should().Be(settings.SubscriptionPurchaseReturnUrl);
-        query["vnp_IpnUrl"].Should().Be(settings.SubscriptionPurchaseIpnUrl);
+        query.Should().NotContainKey("vnp_IpnUrl");
+        query["vnp_IpAddr"].Should().Be("198.51.100.25");
         query["vnp_OrderInfo"].Should().Be("Mua goi Companion Pro");
     }
 

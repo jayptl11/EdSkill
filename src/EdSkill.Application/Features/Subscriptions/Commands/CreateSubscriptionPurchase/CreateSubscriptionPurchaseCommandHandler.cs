@@ -14,17 +14,20 @@ public class CreateSubscriptionPurchaseCommandHandler : IRequestHandler<CreateSu
     private readonly IApplicationDbContext _context;
     private readonly ICurrentUserService _currentUserService;
     private readonly IDateTimeProvider _dateTimeProvider;
+    private readonly IRequestContextService _requestContextService;
     private readonly IVnPayGatewayService _vnPayGatewayService;
 
     public CreateSubscriptionPurchaseCommandHandler(
         IApplicationDbContext context,
         ICurrentUserService currentUserService,
         IDateTimeProvider dateTimeProvider,
+        IRequestContextService requestContextService,
         IVnPayGatewayService vnPayGatewayService)
     {
         _context = context;
         _currentUserService = currentUserService;
         _dateTimeProvider = dateTimeProvider;
+        _requestContextService = requestContextService;
         _vnPayGatewayService = vnPayGatewayService;
     }
 
@@ -98,7 +101,8 @@ public class CreateSubscriptionPurchaseCommandHandler : IRequestHandler<CreateSu
                 payment.AmountVnd,
                 $"Mua goi {plan.Name}",
                 utcNow,
-                VnPayPaymentPurpose.SubscriptionPurchase));
+                VnPayPaymentPurpose.SubscriptionPurchase,
+                _requestContextService.GetClientIpAddress()));
         if (!paymentUrlResult.IsSuccess)
         {
             return Result<CreateSubscriptionPurchaseResultDto>.Failure(paymentUrlResult.ErrorCode!, paymentUrlResult.ErrorMessage!);

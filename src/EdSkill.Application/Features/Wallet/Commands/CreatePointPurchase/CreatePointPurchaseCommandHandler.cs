@@ -13,17 +13,20 @@ public class CreatePointPurchaseCommandHandler : IRequestHandler<CreatePointPurc
     private readonly IApplicationDbContext _context;
     private readonly ICurrentUserService _currentUserService;
     private readonly IDateTimeProvider _dateTimeProvider;
+    private readonly IRequestContextService _requestContextService;
     private readonly IVnPayGatewayService _vnPayGatewayService;
 
     public CreatePointPurchaseCommandHandler(
         IApplicationDbContext context,
         ICurrentUserService currentUserService,
         IDateTimeProvider dateTimeProvider,
+        IRequestContextService requestContextService,
         IVnPayGatewayService vnPayGatewayService)
     {
         _context = context;
         _currentUserService = currentUserService;
         _dateTimeProvider = dateTimeProvider;
+        _requestContextService = requestContextService;
         _vnPayGatewayService = vnPayGatewayService;
     }
 
@@ -75,7 +78,8 @@ public class CreatePointPurchaseCommandHandler : IRequestHandler<CreatePointPurc
                 payment.AmountVnd,
                 $"Nap diem {package.Name}",
                 utcNow,
-                VnPayPaymentPurpose.PointPurchase));
+                VnPayPaymentPurpose.PointPurchase,
+                _requestContextService.GetClientIpAddress()));
 
         if (!paymentUrlResult.IsSuccess)
         {

@@ -29,6 +29,9 @@ public class CreateSubscriptionPurchaseCommandHandlerTests
         var dateTimeProviderMock = new Mock<IDateTimeProvider>();
         dateTimeProviderMock.SetupGet(x => x.UtcNow).Returns(now);
 
+        var requestContextServiceMock = new Mock<IRequestContextService>();
+        requestContextServiceMock.Setup(x => x.GetClientIpAddress()).Returns("198.51.100.25");
+
         var vnPayGatewayMock = new Mock<IVnPayGatewayService>();
         VnPayCreatePaymentRequest? capturedRequest = null;
         vnPayGatewayMock
@@ -41,6 +44,7 @@ public class CreateSubscriptionPurchaseCommandHandlerTests
             contextMock.Object,
             currentUserServiceMock.Object,
             dateTimeProviderMock.Object,
+            requestContextServiceMock.Object,
             vnPayGatewayMock.Object);
 
         var result = await handler.Handle(new CreateSubscriptionPurchaseCommand(plan.SubscriptionPlanId), CancellationToken.None);
@@ -52,6 +56,7 @@ public class CreateSubscriptionPurchaseCommandHandlerTests
         capturedRequest.Should().NotBeNull();
         capturedRequest!.Purpose.Should().Be(VnPayPaymentPurpose.SubscriptionPurchase);
         capturedRequest.OrderDescription.Should().Be($"Mua goi {plan.Name}");
+        capturedRequest.ClientIpAddress.Should().Be("198.51.100.25");
     }
 
     [Fact]
@@ -83,11 +88,14 @@ public class CreateSubscriptionPurchaseCommandHandlerTests
         var dateTimeProviderMock = new Mock<IDateTimeProvider>();
         dateTimeProviderMock.SetupGet(x => x.UtcNow).Returns(new DateTime(2026, 5, 17, 10, 0, 0, DateTimeKind.Utc));
 
+        var requestContextServiceMock = new Mock<IRequestContextService>();
         var vnPayGatewayMock = new Mock<IVnPayGatewayService>();
+
         var handler = new CreateSubscriptionPurchaseCommandHandler(
             contextMock.Object,
             currentUserServiceMock.Object,
             dateTimeProviderMock.Object,
+            requestContextServiceMock.Object,
             vnPayGatewayMock.Object);
 
         var result = await handler.Handle(new CreateSubscriptionPurchaseCommand(learnerPlan.SubscriptionPlanId), CancellationToken.None);
@@ -128,6 +136,9 @@ public class CreateSubscriptionPurchaseCommandHandlerTests
         var dateTimeProviderMock = new Mock<IDateTimeProvider>();
         dateTimeProviderMock.SetupGet(x => x.UtcNow).Returns(now);
 
+        var requestContextServiceMock = new Mock<IRequestContextService>();
+        requestContextServiceMock.Setup(x => x.GetClientIpAddress()).Returns("198.51.100.26");
+
         var vnPayGatewayMock = new Mock<IVnPayGatewayService>();
         VnPayCreatePaymentRequest? capturedRequest = null;
         vnPayGatewayMock
@@ -140,6 +151,7 @@ public class CreateSubscriptionPurchaseCommandHandlerTests
             contextMock.Object,
             currentUserServiceMock.Object,
             dateTimeProviderMock.Object,
+            requestContextServiceMock.Object,
             vnPayGatewayMock.Object);
 
         var result = await handler.Handle(new CreateSubscriptionPurchaseCommand(companionPlan.SubscriptionPlanId), CancellationToken.None);
@@ -149,6 +161,7 @@ public class CreateSubscriptionPurchaseCommandHandlerTests
         payments[0].SubscriptionPlanId.Should().Be(companionPlan.SubscriptionPlanId);
         capturedRequest.Should().NotBeNull();
         capturedRequest!.Purpose.Should().Be(VnPayPaymentPurpose.SubscriptionPurchase);
+        capturedRequest.ClientIpAddress.Should().Be("198.51.100.26");
     }
 
     private static SubscriptionPlan CreatePlan(SubscriptionTargetRole targetRole, string code, int priceVnd)
