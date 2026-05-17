@@ -91,7 +91,11 @@ public class SubscriptionEntitlementService : ISubscriptionEntitlementService
                 && subscription.ExpiresAt > utcNow
                 && subscription.Plan != null
                 && subscription.Plan.IsActive)
-            .AnyAsync(subscription => HasCoverageOverlap(subscription.Plan!.TargetRole, plan.TargetRole), cancellationToken);
+            .AnyAsync(subscription =>
+                (subscription.Plan!.TargetRole == SubscriptionTargetRole.Learner && (plan.TargetRole == SubscriptionTargetRole.Learner || plan.TargetRole == SubscriptionTargetRole.MultiRole))
+                || (subscription.Plan!.TargetRole == SubscriptionTargetRole.Companion && (plan.TargetRole == SubscriptionTargetRole.Companion || plan.TargetRole == SubscriptionTargetRole.MultiRole))
+                || (subscription.Plan!.TargetRole == SubscriptionTargetRole.MultiRole && (plan.TargetRole == SubscriptionTargetRole.Learner || plan.TargetRole == SubscriptionTargetRole.Companion || plan.TargetRole == SubscriptionTargetRole.MultiRole)),
+                cancellationToken);
 
         if (overlap)
         {

@@ -59,6 +59,7 @@ public class CreateSubscriptionPurchaseCommandHandler : IRequestHandler<CreateSu
         }
 
         var utcNow = _dateTimeProvider.UtcNow;
+        var targetRole = plan.TargetRole;
         var hasConflict = await _context.UserSubscriptions
             .AsNoTracking()
             .Include(item => item.Plan)
@@ -68,7 +69,9 @@ public class CreateSubscriptionPurchaseCommandHandler : IRequestHandler<CreateSu
                     && item.ExpiresAt > utcNow
                     && item.Plan != null
                     && item.Plan.IsActive
-                    && SubscriptionEntitlementService.HasCoverageOverlap(item.Plan.TargetRole, plan.TargetRole),
+                    && ((item.Plan.TargetRole == SubscriptionTargetRole.Learner && (targetRole == SubscriptionTargetRole.Learner || targetRole == SubscriptionTargetRole.MultiRole))
+                        || (item.Plan.TargetRole == SubscriptionTargetRole.Companion && (targetRole == SubscriptionTargetRole.Companion || targetRole == SubscriptionTargetRole.MultiRole))
+                        || (item.Plan.TargetRole == SubscriptionTargetRole.MultiRole && (targetRole == SubscriptionTargetRole.Learner || targetRole == SubscriptionTargetRole.Companion || targetRole == SubscriptionTargetRole.MultiRole))),
                 cancellationToken);
         if (hasConflict)
         {
