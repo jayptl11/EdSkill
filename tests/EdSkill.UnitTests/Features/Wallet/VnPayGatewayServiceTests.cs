@@ -4,6 +4,7 @@ using EdSkill.Infrastructure.Settings;
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using System.Net;
 
 namespace EdSkill.UnitTests.Features.Wallet;
 
@@ -79,8 +80,8 @@ public class VnPayGatewayServiceTests
             .Split('&', StringSplitOptions.RemoveEmptyEntries)
             .Select(part => part.Split('=', 2))
             .ToDictionary(
-                part => Uri.UnescapeDataString(part[0]),
-                part => part.Length > 1 ? Uri.UnescapeDataString(part[1]) : string.Empty,
+                part => WebUtility.UrlDecode(part[0]),
+                part => part.Length > 1 ? WebUtility.UrlDecode(part[1]) : string.Empty,
                 StringComparer.Ordinal);
     }
 }

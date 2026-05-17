@@ -24,7 +24,10 @@ public class VnPayGatewayService : IVnPayGatewayService
     {
         _settings = settings.Value;
         _logger = logger;
-        _settings.TerminalCode = GetEnvOrDefault("VNPAY__TERMINALCODE", "VNPAY_TERMINALCODE", _settings.TerminalCode);
+        _settings.TerminalCode = GetEnvOrDefault(
+            "VNPAY__TERMINALCODE",
+            "VNPAY_TERMINALCODE",
+            GetEnvOrDefault("VNPAY__TMNCODE", "VNPAY_TMNCODE", _settings.TerminalCode));
         _settings.HashSecret = GetEnvOrDefault("VNPAY__HASHSECRET", "VNPAY_HASHSECRET", _settings.HashSecret);
         _settings.BaseUrl = GetEnvOrDefault("VNPAY__BASEURL", "VNPAY_BASEURL", _settings.BaseUrl);
         _settings.PointPurchaseReturnUrl = GetEnvOrDefault("VNPAY__POINTPURCHASERETURNURL", "VNPAY_POINTPURCHASERETURNURL", _settings.PointPurchaseReturnUrl);
@@ -223,7 +226,7 @@ public class VnPayGatewayService : IVnPayGatewayService
 
     private static string Encode(string value)
     {
-        return Uri.EscapeDataString(value ?? string.Empty);
+        return WebUtility.UrlEncode(value ?? string.Empty);
     }
 
     private static string GetEnvOrDefault(string primaryEnvKey, string fallbackEnvKey, string currentValue)
