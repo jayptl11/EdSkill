@@ -48,14 +48,18 @@ internal static class ProfileDtoMapper
 
         return new ProfileDto(
             user.UserId,
+            user.Email,
             profile.DisplayName,
             profile.AvatarUrl,
             profile.Bio,
             includePrivateDetails ? profile.DateOfBirth : null,
             includePrivateDetails ? profile.Phone : null,
+            includePrivateDetails ? profile.Gender : null,
+            includePrivateDetails ? profile.SocialLinkUrl : null,
             includePrivateDetails ? profile.DegreeUrl : null,
             includePrivateDetails ? profile.CredentialUrls.AsReadOnly() : Array.Empty<string>(),
             profile.CredentialUrls.Count,
+            includePrivateDetails ? profile.Address : null,
             skillsToTeach.AsReadOnly(),
             skillsToLearn.AsReadOnly(),
             teachingSkills.AsReadOnly(),

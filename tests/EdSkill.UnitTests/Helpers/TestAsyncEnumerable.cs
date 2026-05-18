@@ -134,6 +134,10 @@ public static class MockDbSetExtensions
                     }
                 });
 
+            mockDbSet.Setup(m => m.Remove(It.IsAny<T>()))
+                .Callback<T>(entity => collection.Remove(entity))
+                .Returns<T>(entity => null!);
+
             mockDbSet.Setup(m => m.RemoveRange(It.IsAny<IEnumerable<T>>()))
                 .Callback<IEnumerable<T>>(entities =>
                 {

@@ -60,6 +60,16 @@ public class UpdateMyProfileCommandHandler : IRequestHandler<UpdateMyProfileComm
             profile.Phone = NormalizeOptionalString(request.Phone);
         }
 
+        if (request.HasGender)
+        {
+            profile.Gender = request.Gender;
+        }
+
+        if (request.HasSocialLinkUrl)
+        {
+            profile.SocialLinkUrl = NormalizeUrl(request.SocialLinkUrl);
+        }
+
         if (request.HasDegreeUrl)
         {
             profile.DegreeUrl = NormalizeOptionalString(request.DegreeUrl);
@@ -75,6 +85,11 @@ public class UpdateMyProfileCommandHandler : IRequestHandler<UpdateMyProfileComm
         {
             profile.CredentialUrls = NormalizeUrlCollection(request.CredentialUrls);
             profile.DegreeUrl = profile.CredentialUrls.FirstOrDefault();
+        }
+
+        if (request.HasAddress)
+        {
+            profile.Address = NormalizeOptionalString(request.Address);
         }
 
         if (request.HasSkillsToTeach)
@@ -125,6 +140,11 @@ public class UpdateMyProfileCommandHandler : IRequestHandler<UpdateMyProfileComm
     }
 
     private static string? NormalizeOptionalString(string? value)
+    {
+        return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+    }
+
+    private static string? NormalizeUrl(string? value)
     {
         return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
     }

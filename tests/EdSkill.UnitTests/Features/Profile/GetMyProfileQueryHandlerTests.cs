@@ -20,6 +20,7 @@ public class GetMyProfileQueryHandlerTests
         var user = new User
         {
             UserId = userId,
+            Email = "companion@edskill.test",
             Roles = new List<string> { "learner", "companion" },
             UserSkills = new List<UserSkill>
             {
@@ -63,8 +64,11 @@ public class GetMyProfileQueryHandlerTests
                 Bio = "I teach speaking",
                 DateOfBirth = new DateTime(2000, 1, 2),
                 Phone = "+84912345678",
+                Gender = UserGender.Male,
+                SocialLinkUrl = "https://linkedin.com/in/companion",
                 DegreeUrl = "https://cdn.edskill.test/degree/u/degree.pdf",
                 CredentialUrls = new List<string> { "https://cdn.edskill.test/degree/u/degree.pdf" },
+                Address = "Ha Noi",
                 IsPublic = true
             }
         };
@@ -96,6 +100,10 @@ public class GetMyProfileQueryHandlerTests
         var result = await handler.Handle(new GetMyProfileQuery(), CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
+        result.Value!.Email.Should().Be("companion@edskill.test");
+        result.Value.Gender.Should().Be(UserGender.Male);
+        result.Value.SocialLinkUrl.Should().Be("https://linkedin.com/in/companion");
+        result.Value.Address.Should().Be("Ha Noi");
         result.Value!.SkillsToTeach.Should().BeEquivalentTo("Speaking");
         result.Value.SkillsToLearn.Should().BeEquivalentTo("React");
         result.Value.TeachingSkills.Should().ContainSingle();

@@ -9,6 +9,7 @@ public partial class UpdateMyProfileCommandValidator : AbstractValidator<UpdateM
     private const int MaxSkillsPerList = 20;
     private const int MaxSkillLength = 50;
     private const int MaxCredentials = 10;
+    private const int MaxAddressLength = 200;
 
     public UpdateMyProfileCommandValidator(IObjectStorageService objectStorageService)
     {
@@ -54,6 +55,22 @@ public partial class UpdateMyProfileCommandValidator : AbstractValidator<UpdateM
                 .Must(phone => PhoneRegex().IsMatch(phone.Trim()))
                 .WithMessage("Phone number format is invalid")
                 .WithErrorCode("INVALID_PHONE");
+        });
+
+        When(x => x.HasSocialLinkUrl && x.SocialLinkUrl is not null, () =>
+        {
+            RuleFor(x => x.SocialLinkUrl!)
+                .Must(BeAbsoluteUrl)
+                .WithMessage("Social link URL is invalid")
+                .WithErrorCode("INVALID_SOCIAL_LINK_URL");
+        });
+
+        When(x => x.HasAddress && x.Address is not null, () =>
+        {
+            RuleFor(x => x.Address!)
+                .Must(address => address.Trim().Length <= MaxAddressLength)
+                .WithMessage($"Address must not exceed {MaxAddressLength} characters")
+                .WithErrorCode("INVALID_ADDRESS");
         });
 
         When(x => x.HasSkillsToTeach, () =>
@@ -163,6 +180,12 @@ public partial class UpdateMyProfileCommandValidator : AbstractValidator<UpdateM
         }
 
         return true;
+    }
+
+    private static bool BeAbsoluteUrl(string url)
+    {
+        return Uri.TryCreate(url.Trim(), UriKind.Absolute, out var uri)
+            && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps);
     }
 
     [GeneratedRegex(@"^[\p{L}\p{N} ]+$", RegexOptions.Compiled)]

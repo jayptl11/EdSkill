@@ -57,6 +57,7 @@ public class UpdateMyProfileCommandHandlerTests
         var user = new User
         {
             UserId = userId,
+            Email = "learner@edskill.test",
             Roles = new List<string> { "learner", "companion" },
             UserSkills = new List<UserSkill>
             {
@@ -89,8 +90,11 @@ public class UpdateMyProfileCommandHandlerTests
             true, "  Hello world  ",
             true, new DateTime(2000, 1, 2),
             true, "  +84 912 345 678  ",
+            true, UserGender.Female,
+            true, " https://linkedin.com/in/new-name ",
             false, null,
             true, new[] { "  https://cdn.edskill.test/degree/u/cert-1.pdf  ", "https://cdn.edskill.test/degree/u/cert-2.pdf" },
+            true, "  Ha Noi  ",
             true, new[] { " tieng anh ", "ASP.NET" },
             true, new[] { "React" },
             true, "  https://cdn.edskill.test/avatar/u/a.jpg  ",
@@ -103,10 +107,13 @@ public class UpdateMyProfileCommandHandlerTests
         user.UserProfile.Bio.Should().Be("Hello world");
         user.UserProfile.DateOfBirth.Should().Be(new DateTime(2000, 1, 2));
         user.UserProfile.Phone.Should().Be("+84 912 345 678");
+        user.UserProfile.Gender.Should().Be(UserGender.Female);
+        user.UserProfile.SocialLinkUrl.Should().Be("https://linkedin.com/in/new-name");
         user.UserProfile.DegreeUrl.Should().Be("https://cdn.edskill.test/degree/u/cert-1.pdf");
         user.UserProfile.CredentialUrls.Should().BeEquivalentTo(
             "https://cdn.edskill.test/degree/u/cert-1.pdf",
             "https://cdn.edskill.test/degree/u/cert-2.pdf");
+        user.UserProfile.Address.Should().Be("Ha Noi");
         user.UserProfile.SkillsToTeach.Should().BeEquivalentTo("Speaking", "ASP.NET");
         user.UserProfile.SkillsToLearn.Should().BeEquivalentTo("React");
         user.UserProfile.AvatarUrl.Should().Be("https://cdn.edskill.test/avatar/u/a.jpg");
@@ -135,6 +142,9 @@ public class UpdateMyProfileCommandHandlerTests
 
         var command = new UpdateMyProfileCommand(
             true, "Name",
+            false, null,
+            false, null,
+            false, null,
             false, null,
             false, null,
             false, null,
@@ -183,6 +193,9 @@ public class UpdateMyProfileCommandHandlerTests
         _contextMock.Setup(x => x.UserSkills).Returns(userSkills.BuildMockDbSet().Object);
 
         var command = new UpdateMyProfileCommand(
+            false, null,
+            false, null,
+            false, null,
             false, null,
             false, null,
             false, null,

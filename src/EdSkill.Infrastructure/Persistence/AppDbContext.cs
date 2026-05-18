@@ -42,6 +42,8 @@ namespace EdSkill.Infrastructure.Persistence
         public DbSet<PolicyConsent> PolicyConsents => Set<PolicyConsent>();
         public DbSet<Skill> Skills => Set<Skill>();
         public DbSet<UserSkill> UserSkills => Set<UserSkill>();
+        public DbSet<CompanionSpaceCard> CompanionSpaceCards => Set<CompanionSpaceCard>();
+        public DbSet<LearnerSpaceCard> LearnerSpaceCards => Set<LearnerSpaceCard>();
         public DbSet<Review> Reviews => Set<Review>();
         public DbSet<AchievementDefinition> AchievementDefinitions => Set<AchievementDefinition>();
         public DbSet<UserAchievement> UserAchievements => Set<UserAchievement>();
@@ -68,6 +70,8 @@ namespace EdSkill.Infrastructure.Persistence
             modelBuilder.Entity<PolicyConsent>().HasKey(e => e.PolicyConsentId);
             modelBuilder.Entity<Skill>().HasKey(e => e.SkillId);
             modelBuilder.Entity<UserSkill>().HasKey(e => e.UserSkillId);
+            modelBuilder.Entity<CompanionSpaceCard>().HasKey(e => e.CompanionSpaceCardId);
+            modelBuilder.Entity<LearnerSpaceCard>().HasKey(e => e.LearnerSpaceCardId);
             modelBuilder.Entity<Review>().HasKey(e => e.ReviewId);
             modelBuilder.Entity<AchievementDefinition>().HasKey(e => e.AchievementDefinitionId);
             modelBuilder.Entity<UserAchievement>().HasKey(e => e.UserAchievementId);
@@ -214,6 +218,11 @@ namespace EdSkill.Infrastructure.Persistence
                     .Metadata.SetValueComparer(stringListComparer);
                 entity.Property(p => p.Phone)
                     .HasMaxLength(50);
+                entity.Property(p => p.Gender)
+                    .HasConversion<string>()
+                    .HasMaxLength(32);
+                entity.Property(p => p.SocialLinkUrl)
+                    .HasMaxLength(2048);
                 entity.Property(p => p.Address)
                     .HasMaxLength(500);
                 entity.Property(p => p.IsPublic)
@@ -658,6 +667,87 @@ namespace EdSkill.Infrastructure.Persistence
                 entity.HasOne(review => review.Session)
                     .WithMany()
                     .HasForeignKey(review => review.SessionId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            var deliveryModeListConverter = new ValueConverter<List<Domain.Enums.SessionDeliveryMode>, string>(
+                values => JsonSerializer.Serialize(values, (JsonSerializerOptions?)null),
+                values => JsonSerializer.Deserialize<List<Domain.Enums.SessionDeliveryMode>>(values, (JsonSerializerOptions?)null) ?? new List<Domain.Enums.SessionDeliveryMode>());
+
+            var deliveryModeListComparer = new ValueComparer<List<Domain.Enums.SessionDeliveryMode>>(
+                (left, right) => (left ?? new List<Domain.Enums.SessionDeliveryMode>()).SequenceEqual(right ?? new List<Domain.Enums.SessionDeliveryMode>()),
+                values => (values ?? new List<Domain.Enums.SessionDeliveryMode>())
+                    .Aggregate(0, (hash, value) => HashCode.Combine(hash, value.GetHashCode())),
+                values => (values ?? new List<Domain.Enums.SessionDeliveryMode>()).ToList());
+
+            modelBuilder.Entity<CompanionSpaceCard>(entity =>
+            {
+                entity.HasIndex(card => new { card.UserId, card.SkillId, card.Title });
+                entity.Property(card => card.Title).HasMaxLength(120).IsRequired();
+                entity.Property(card => card.Description).HasMaxLength(2000);
+                entity.Property(card => card.CoverImageUrl).HasMaxLength(2048);
+                entity.Property(card => card.PricePoints).HasDefaultValue(0);
+                entity.Property(card => card.DurationMinutes).HasDefaultValue(60);
+                entity.Property(card => card.DeliveryModes)
+                    .HasConversion(deliveryModeListConverter)
+                    .HasColumnType("nvarchar(max)")
+                    .HasDefaultValueSql("N'[]'")
+                    .Metadata.SetValueComparer(deliveryModeListComparer);
+                entity.Property(card => card.Languages)
+                    .HasConversion(stringListConverter)
+                    .HasColumnType("nvarchar(max)")
+                    .HasDefaultValueSql("N'[]'")
+                    .Metadata.SetValueComparer(stringListComparer);
+                entity.Property(card => card.CredentialUrls)
+                    .HasConversion(stringListConverter)
+                    .HasColumnType("nvarchar(max)")
+                    .HasDefaultValueSql("N'[]'")
+                    .Metadata.SetValueComparer(stringListComparer);
+                entity.Property(card => card.IsPublished).HasDefaultValue(false);
+                entity.Property(card => card.CreatedAt).HasDefaultValueSql("GETUTCDATE()");
+                entity.Property(card => card.UpdatedAt).HasDefaultValueSql("GETUTCDATE()");
+
+                entity.HasOne(card => card.User)
+                    .WithMany()
+                    .HasForeignKey(card => card.UserId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(card => card.Skill)
+                    .WithMany()
+                    .HasForeignKey(card => card.SkillId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<LearnerSpaceCard>(entity =>
+            {
+                entity.HasIndex(card => new { card.UserId, card.SkillId, card.Title });
+                entity.Property(card => card.Title).HasMaxLength(120).IsRequired();
+                entity.Property(card => card.Description).HasMaxLength(2000);
+                entity.Property(card => card.CoverImageUrl).HasMaxLength(2048);
+                entity.Property(card => card.TargetPoints).HasDefaultValue(0);
+                entity.Property(card => card.DurationMinutes).HasDefaultValue(60);
+                entity.Property(card => card.DeliveryModes)
+                    .HasConversion(deliveryModeListConverter)
+                    .HasColumnType("nvarchar(max)")
+                    .HasDefaultValueSql("N'[]'")
+                    .Metadata.SetValueComparer(deliveryModeListComparer);
+                entity.Property(card => card.Languages)
+                    .HasConversion(stringListConverter)
+                    .HasColumnType("nvarchar(max)")
+                    .HasDefaultValueSql("N'[]'")
+                    .Metadata.SetValueComparer(stringListComparer);
+                entity.Property(card => card.IsPublished).HasDefaultValue(false);
+                entity.Property(card => card.CreatedAt).HasDefaultValueSql("GETUTCDATE()");
+                entity.Property(card => card.UpdatedAt).HasDefaultValueSql("GETUTCDATE()");
+
+                entity.HasOne(card => card.User)
+                    .WithMany()
+                    .HasForeignKey(card => card.UserId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasOne(card => card.Skill)
+                    .WithMany()
+                    .HasForeignKey(card => card.SkillId)
                     .OnDelete(DeleteBehavior.Restrict);
             });
 

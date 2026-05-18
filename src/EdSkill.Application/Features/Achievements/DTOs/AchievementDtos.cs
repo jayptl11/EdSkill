@@ -8,6 +8,35 @@ public record AchievementSummaryDto(
     DateTime AwardedAt
 );
 
+public record MyAchievementEarnedDto(
+    Guid AchievementId,
+    string Name,
+    string Description,
+    string? IconUrl,
+    string Track,
+    string Metric,
+    int Threshold,
+    DateTime AwardedAt
+);
+
+public record MyUpcomingAchievementDto(
+    Guid AchievementId,
+    string Name,
+    string Description,
+    string? IconUrl,
+    string Track,
+    string Metric,
+    int CurrentValue,
+    int Threshold,
+    int RemainingValue,
+    double ProgressPercent
+);
+
+public record MyAchievementsDto(
+    IReadOnlyCollection<MyAchievementEarnedDto> Earned,
+    IReadOnlyCollection<MyUpcomingAchievementDto> Upcoming
+);
+
 public record AdminAchievementDto(
     Guid AchievementId,
     string Name,

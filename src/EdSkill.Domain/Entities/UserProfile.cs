@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using EdSkill.Domain.Enums;
 
 namespace EdSkill.Domain.Entities
 {
@@ -23,6 +24,8 @@ namespace EdSkill.Domain.Entities
 
         public DateTime? DateOfBirth { get; set; }
         public string? Phone { get; set; }
+        public UserGender? Gender { get; set; }
+        public string? SocialLinkUrl { get; set; }
         public string? DegreeUrl { get; set; }
         public List<string> CredentialUrls { get; set; } = new();
         public string? Address { get; set; }

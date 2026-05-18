@@ -378,6 +378,7 @@ FodyWeavers.xsd
 # Markdown notes/docs are local only
 !AGENT.md
 *.md
+!docs/intergartion/*.md
 
 
 

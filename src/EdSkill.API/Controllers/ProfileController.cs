@@ -6,6 +6,7 @@ using EdSkill.Application.Features.Profile.Commands.UpdateMyProfile;
 using EdSkill.Application.Features.Profile.DTOs;
 using EdSkill.Application.Features.Profile.Queries.GetMyProfile;
 using EdSkill.Application.Features.Profile.Queries.GetUserProfile;
+using EdSkill.Domain.Enums;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -51,10 +52,16 @@ public class ProfileController : ControllerBase
             request.DateOfBirth,
             request.HasPhone,
             request.Phone,
+            request.HasGender,
+            request.Gender,
+            request.HasSocialLinkUrl,
+            request.SocialLinkUrl,
             request.HasDegreeUrl,
             request.DegreeUrl,
             request.HasCredentialUrls,
             request.CredentialUrls,
+            request.HasAddress,
+            request.Address,
             request.HasSkillsToTeach,
             request.SkillsToTeach,
             request.HasSkillsToLearn,

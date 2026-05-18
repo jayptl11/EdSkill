@@ -1,5 +1,6 @@
 using EdSkill.Application.Features.Achievements.DTOs;
 using EdSkill.Application.Features.Subscriptions.DTOs;
+using EdSkill.Domain.Enums;
 
 namespace EdSkill.Application.Features.Profile.DTOs;
 
@@ -11,14 +12,18 @@ public record ProfileSkillDto(
 
 public record ProfileDto(
     Guid UserId,
+    string Email,
     string DisplayName,
     string? AvatarUrl,
     string? Bio,
     DateTime? DateOfBirth,
     string? Phone,
+    UserGender? Gender,
+    string? SocialLinkUrl,
     string? DegreeUrl,
     IReadOnlyCollection<string> CredentialUrls,
     int CredentialCount,
+    string? Address,
     IReadOnlyCollection<string> SkillsToTeach,
     IReadOnlyCollection<string> SkillsToLearn,
     IReadOnlyCollection<ProfileSkillDto> TeachingSkills,
@@ -66,8 +71,11 @@ public sealed class UpdateMyProfileRequest
     private string? _bio;
     private DateTime? _dateOfBirth;
     private string? _phone;
+    private UserGender? _gender;
+    private string? _socialLinkUrl;
     private string? _degreeUrl;
     private IReadOnlyCollection<string>? _credentialUrls;
+    private string? _address;
     private IReadOnlyCollection<string>? _skillsToTeach;
     private IReadOnlyCollection<string>? _skillsToLearn;
     private string? _avatarUrl;
@@ -77,8 +85,11 @@ public sealed class UpdateMyProfileRequest
     public bool HasBio { get; private set; }
     public bool HasDateOfBirth { get; private set; }
     public bool HasPhone { get; private set; }
+    public bool HasGender { get; private set; }
+    public bool HasSocialLinkUrl { get; private set; }
     public bool HasDegreeUrl { get; private set; }
     public bool HasCredentialUrls { get; private set; }
+    public bool HasAddress { get; private set; }
     public bool HasSkillsToTeach { get; private set; }
     public bool HasSkillsToLearn { get; private set; }
     public bool HasAvatarUrl { get; private set; }
@@ -124,6 +135,26 @@ public sealed class UpdateMyProfileRequest
         }
     }
 
+    public UserGender? Gender
+    {
+        get => _gender;
+        set
+        {
+            HasGender = true;
+            _gender = value;
+        }
+    }
+
+    public string? SocialLinkUrl
+    {
+        get => _socialLinkUrl;
+        set
+        {
+            HasSocialLinkUrl = true;
+            _socialLinkUrl = value;
+        }
+    }
+
     public string? DegreeUrl
     {
         get => _degreeUrl;
@@ -141,6 +172,16 @@ public sealed class UpdateMyProfileRequest
         {
             HasCredentialUrls = true;
             _credentialUrls = value;
+        }
+    }
+
+    public string? Address
+    {
+        get => _address;
+        set
+        {
+            HasAddress = true;
+            _address = value;
         }
     }
 

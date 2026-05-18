@@ -1,5 +1,6 @@
 using EdSkill.Application.Common.Models;
 using EdSkill.Application.Features.Profile.DTOs;
+using EdSkill.Domain.Enums;
 using MediatR;
 
 namespace EdSkill.Application.Features.Profile.Commands.UpdateMyProfile;
@@ -13,10 +14,16 @@ public record UpdateMyProfileCommand(
     DateTime? DateOfBirth,
     bool HasPhone,
     string? Phone,
+    bool HasGender,
+    UserGender? Gender,
+    bool HasSocialLinkUrl,
+    string? SocialLinkUrl,
     bool HasDegreeUrl,
     string? DegreeUrl,
     bool HasCredentialUrls,
     IReadOnlyCollection<string>? CredentialUrls,
+    bool HasAddress,
+    string? Address,
     bool HasSkillsToTeach,
     IReadOnlyCollection<string>? SkillsToTeach,
     bool HasSkillsToLearn,

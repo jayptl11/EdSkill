@@ -1,6 +1,7 @@
 using EdSkill.Application.Common.Models;
 using EdSkill.Application.Features.Reviews.Commands.CreateReview;
 using EdSkill.Application.Features.Reviews.DTOs;
+using EdSkill.Application.Features.Reviews.Queries.GetMyReviewDashboard;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -17,6 +18,14 @@ public class ReviewsController : ControllerBase
     public ReviewsController(ISender sender)
     {
         _sender = sender;
+    }
+
+    [HttpGet("me/dashboard")]
+    [ProducesResponseType(typeof(ReviewDashboardDto), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetMyDashboard(CancellationToken cancellationToken)
+    {
+        var result = await _sender.Send(new GetMyReviewDashboardQuery(), cancellationToken);
+        return Ok(result.Value);
     }
 
     [HttpPost]

@@ -1,5 +1,6 @@
 using EdSkill.Application.Common.Interfaces;
 using EdSkill.Application.Features.Profile.Commands.UpdateMyProfile;
+using EdSkill.Domain.Enums;
 using FluentValidation.TestHelper;
 using Moq;
 
@@ -74,6 +75,28 @@ public class UpdateMyProfileCommandValidatorTests
         result.ShouldNotHaveValidationErrorFor(x => x.CredentialUrls);
     }
 
+    [Fact]
+    public void Validate_WhenSocialLinkUrlIsRelative_ShouldHaveError()
+    {
+        var command = NewCommand(hasSocialLinkUrl: true, socialLinkUrl: "/profile/me");
+
+        var result = _validator.TestValidate(command);
+
+        result.ShouldHaveValidationErrorFor(x => x.SocialLinkUrl)
+            .WithErrorCode("INVALID_SOCIAL_LINK_URL");
+    }
+
+    [Fact]
+    public void Validate_WhenAddressTooLong_ShouldHaveError()
+    {
+        var command = NewCommand(hasAddress: true, address: new string('a', 201));
+
+        var result = _validator.TestValidate(command);
+
+        result.ShouldHaveValidationErrorFor(x => x.Address)
+            .WithErrorCode("INVALID_ADDRESS");
+    }
+
     private static UpdateMyProfileCommand NewCommand(
         bool hasDisplayName = false,
         string? displayName = null,
@@ -83,10 +106,16 @@ public class UpdateMyProfileCommandValidatorTests
         DateTime? dateOfBirth = null,
         bool hasPhone = false,
         string? phone = null,
+        bool hasGender = false,
+        UserGender? gender = null,
+        bool hasSocialLinkUrl = false,
+        string? socialLinkUrl = null,
         bool hasDegreeUrl = false,
         string? degreeUrl = null,
         bool hasCredentialUrls = false,
         IReadOnlyCollection<string>? credentialUrls = null,
+        bool hasAddress = false,
+        string? address = null,
         bool hasSkillsToTeach = false,
         IReadOnlyCollection<string>? skillsToTeach = null,
         bool hasSkillsToLearn = false,
@@ -101,8 +130,11 @@ public class UpdateMyProfileCommandValidatorTests
             hasBio, bio,
             hasDateOfBirth, dateOfBirth,
             hasPhone, phone,
+            hasGender, gender,
+            hasSocialLinkUrl, socialLinkUrl,
             hasDegreeUrl, degreeUrl,
             hasCredentialUrls, credentialUrls,
+            hasAddress, address,
             hasSkillsToTeach, skillsToTeach,
             hasSkillsToLearn, skillsToLearn,
             hasAvatarUrl, avatarUrl,
