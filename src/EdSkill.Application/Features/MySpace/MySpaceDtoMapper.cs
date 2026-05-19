@@ -1,4 +1,5 @@
 using EdSkill.Application.Features.MySpace.DTOs;
+using EdSkill.Application.Features.Sessions;
 using EdSkill.Domain.Entities;
 
 namespace EdSkill.Application.Features.MySpace;
@@ -6,46 +7,39 @@ namespace EdSkill.Application.Features.MySpace;
 internal static class MySpaceDtoMapper
 {
     public static MySpaceDto Map(
-        IReadOnlyCollection<CompanionSpaceCard> companionCards,
-        IReadOnlyCollection<LearnerSpaceCard> learnerCards)
+        IReadOnlyCollection<MySpaceSessionDto> companionSessions,
+        IReadOnlyCollection<MySpaceSessionDto> learnerSessions)
     {
         return new MySpaceDto(
-            companionCards.Select(MapCompanionCard).ToList(),
-            learnerCards.Select(MapLearnerCard).ToList());
+            companionSessions,
+            learnerSessions);
     }
 
-    public static CompanionSpaceCardDto MapCompanionCard(CompanionSpaceCard card)
+    public static MySpaceSessionDto MapSession(
+        Session session,
+        Skill? skill,
+        UserProfile? companionProfile,
+        int? platformMarkupPct,
+        IDictionary<Guid, MySpaceUserSummaryDto> userLookup)
     {
-        return new CompanionSpaceCardDto(
-            card.CompanionSpaceCardId,
-            new MySpaceSkillDto(card.SkillId, card.Skill.Name, card.Skill.IconKey),
-            card.Title,
-            card.Description,
-            card.PricePoints,
-            card.DurationMinutes,
-            card.DeliveryModes.AsReadOnly(),
-            card.Languages.AsReadOnly(),
-            card.CoverImageUrl,
-            card.CredentialUrls.AsReadOnly(),
-            card.IsPublished,
-            card.CreatedAt,
-            card.UpdatedAt);
+        var companion = ResolveUser(userLookup, session.CompanionId);
+        var learner = session.LearnerId.HasValue
+            ? ResolveUser(userLookup, session.LearnerId.Value)
+            : null;
+
+        return new MySpaceSessionDto(
+            SessionDtoMapper.Map(session, skill, companionProfile, platformMarkupPct),
+            skill is null ? null : new MySpaceSkillDto(skill.SkillId, skill.Name, skill.IconKey),
+            companion,
+            learner);
     }
 
-    public static LearnerSpaceCardDto MapLearnerCard(LearnerSpaceCard card)
+    private static MySpaceUserSummaryDto ResolveUser(
+        IDictionary<Guid, MySpaceUserSummaryDto> userLookup,
+        Guid userId)
     {
-        return new LearnerSpaceCardDto(
-            card.LearnerSpaceCardId,
-            new MySpaceSkillDto(card.SkillId, card.Skill.Name, card.Skill.IconKey),
-            card.Title,
-            card.Description,
-            card.TargetPoints,
-            card.DurationMinutes,
-            card.DeliveryModes.AsReadOnly(),
-            card.Languages.AsReadOnly(),
-            card.CoverImageUrl,
-            card.IsPublished,
-            card.CreatedAt,
-            card.UpdatedAt);
+        return userLookup.TryGetValue(userId, out var user)
+            ? user
+            : new MySpaceUserSummaryDto(userId, "Unknown", null);
     }
 }
