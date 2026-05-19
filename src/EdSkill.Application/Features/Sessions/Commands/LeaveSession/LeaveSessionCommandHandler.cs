@@ -48,27 +48,55 @@ public class LeaveSessionCommandHandler : IRequestHandler<LeaveSessionCommand, R
                 return Result<SessionDto>.Failure("FORBIDDEN", "You do not have access to this session.");
             }
 
-            if (session.Status != SessionStatus.InProgress)
-            {
-                return Result<SessionDto>.Failure("SESSION_INVALID_STATUS", "Hành động không hợp lệ với trạng thái hiện tại.");
-            }
-
             if (session.DeliveryMode != SessionDeliveryMode.Online)
             {
                 return Result<SessionDto>.Failure("SESSION_NOT_ONLINE", "Only online sessions support leave tracking.");
             }
 
-            session.ActualEndAt = _dateTimeProvider.UtcNow;
-            var duration = request.ActualDuration
-                ?? (session.ActualStartAt.HasValue
-                    ? Math.Max(0, (int)Math.Round((session.ActualEndAt.Value - session.ActualStartAt.Value).TotalMinutes))
-                    : 0);
+            var openSegment = await _context.SessionPresenceSegments
+                .OrderByDescending(item => item.JoinedAt)
+                .FirstOrDefaultAsync(
+                    item => item.SessionId == session.SessionId && item.UserId == userId && !item.LeftAt.HasValue,
+                    ct);
 
-            session.ActualDuration = duration;
+            if (openSegment == null)
+            {
+                if (session.Status is SessionStatus.PendingReview or SessionStatus.Disputed)
+                {
+                    return Result<SessionDto>.Success(SessionDtoMapper.Map(session));
+                }
+
+                return Result<SessionDto>.Failure("SESSION_INVALID_STATUS", "Session leave is not valid in the current state.");
+            }
+
+            openSegment.LeftAt = _dateTimeProvider.UtcNow;
+            session.UpdatedAt = _dateTimeProvider.UtcNow;
+
+            var hasOpenParticipant = await _context.SessionPresenceSegments
+                .AnyAsync(item => item.SessionId == session.SessionId && !item.LeftAt.HasValue, ct);
+
+            if (hasOpenParticipant)
+            {
+                session.Status = SessionStatus.InProgress;
+                return Result<SessionDto>.Success(SessionDtoMapper.Map(session));
+            }
+
+            session.ActualEndAt = _dateTimeProvider.UtcNow;
+
+            var segments = await _context.SessionPresenceSegments
+                .Where(item => item.SessionId == session.SessionId)
+                .OrderBy(item => item.JoinedAt)
+                .ToListAsync(ct);
+
+            var learnerSegments = session.LearnerId.HasValue
+                ? segments.Where(item => item.UserId == session.LearnerId.Value).ToList()
+                : [];
+            var companionSegments = segments.Where(item => item.UserId == session.CompanionId).ToList();
+
+            session.ActualDuration = SessionPresenceDurationCalculator.CalculateSharedMinutes(learnerSegments, companionSegments);
 
             var minDuration = await _systemConfigService.GetIntValueAsync(SystemConfigKeys.SessionMinDurationMinutes, ct);
-            session.Status = duration >= minDuration ? SessionStatus.PendingReview : SessionStatus.Disputed;
-            session.UpdatedAt = _dateTimeProvider.UtcNow;
+            session.Status = session.ActualDuration >= minDuration ? SessionStatus.PendingReview : SessionStatus.Disputed;
 
             return Result<SessionDto>.Success(SessionDtoMapper.Map(session));
         }, cancellationToken);

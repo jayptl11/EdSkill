@@ -27,6 +27,7 @@ namespace EdSkill.Domain.Entities
         public virtual ICollection<UserAchievement> UserAchievements { get; set; } = new List<UserAchievement>();
         public virtual ICollection<Session> CompanionSessions { get; set; } = new List<Session>();
         public virtual ICollection<Session> LearnerSessions { get; set; } = new List<Session>();
+        public virtual ICollection<SessionPresenceSegment> SessionPresenceSegments { get; set; } = new List<SessionPresenceSegment>();
         public virtual ICollection<SystemConfig> UpdatedSystemConfigs { get; set; } = new List<SystemConfig>();
         public decimal TokenBalance { get; set; } = 0m;
     }

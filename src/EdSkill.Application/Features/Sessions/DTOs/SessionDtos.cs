@@ -73,6 +73,23 @@ public record SessionStatusDto(
     bool CompanionConfirmed
 );
 
+public record SessionRoomAccessDto(
+    Guid SessionId,
+    string? RoomName,
+    string JitsiDomain,
+    string DisplayName,
+    string? AvatarUrl,
+    string Role,
+    SessionStatus Status,
+    bool CanJoin,
+    string? DenyCode,
+    string? DenyMessage,
+    DateTime ScheduledAt,
+    int DurationMinutes,
+    DateTime JoinOpenAt,
+    DateTime JoinCloseAt
+);
+
 public record CreateSessionRequest(
     Guid SkillId,
     string? Description,

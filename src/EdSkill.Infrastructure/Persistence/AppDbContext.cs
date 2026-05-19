@@ -36,6 +36,7 @@ namespace EdSkill.Infrastructure.Persistence
         public DbSet<SubscriptionPlan> SubscriptionPlans => Set<SubscriptionPlan>();
         public DbSet<UserSubscription> UserSubscriptions => Set<UserSubscription>();
         public DbSet<Session> Sessions => Set<Session>();
+        public DbSet<SessionPresenceSegment> SessionPresenceSegments => Set<SessionPresenceSegment>();
         public DbSet<SystemConfig> SystemConfigs => Set<SystemConfig>();
         public DbSet<SystemLedgerAccount> SystemLedgerAccounts => Set<SystemLedgerAccount>();
         public DbSet<PolicyDocument> PolicyDocuments => Set<PolicyDocument>();
@@ -62,6 +63,7 @@ namespace EdSkill.Infrastructure.Persistence
             modelBuilder.Entity<SubscriptionPlan>().HasKey(e => e.SubscriptionPlanId);
             modelBuilder.Entity<UserSubscription>().HasKey(e => e.UserSubscriptionId);
             modelBuilder.Entity<Session>().HasKey(e => e.SessionId);
+            modelBuilder.Entity<SessionPresenceSegment>().HasKey(e => e.SessionPresenceSegmentId);
             modelBuilder.Entity<SystemConfig>().HasKey(e => e.Key);
             modelBuilder.Entity<SystemLedgerAccount>().HasKey(e => e.SystemLedgerAccountId);
             modelBuilder.Entity<PolicyDocument>().HasKey(e => e.PolicyDocumentId);
@@ -189,6 +191,11 @@ namespace EdSkill.Infrastructure.Persistence
                     .HasForeignKey(session => session.LearnerId)
                     .OnDelete(DeleteBehavior.Restrict);
 
+                entity.HasMany(u => u.SessionPresenceSegments)
+                    .WithOne(segment => segment.User)
+                    .HasForeignKey(segment => segment.UserId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
                 entity.HasMany(u => u.UpdatedSystemConfigs)
                     .WithOne(config => config.UpdatedByUser)
                     .HasForeignKey(config => config.UpdatedBy)
@@ -314,6 +321,21 @@ namespace EdSkill.Infrastructure.Persistence
                 entity.HasIndex(session => new { session.CompanionId, session.ScheduledAt });
                 entity.HasIndex(session => session.SkillId);
                 entity.HasIndex(session => session.Status);
+
+                entity.HasMany(session => session.PresenceSegments)
+                    .WithOne(segment => segment.Session)
+                    .HasForeignKey(segment => segment.SessionId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<SessionPresenceSegment>(entity =>
+            {
+                entity.Property(segment => segment.JoinedAt).IsRequired();
+                entity.Property(segment => segment.LeftAt);
+                entity.HasIndex(segment => new { segment.SessionId, segment.UserId, segment.JoinedAt });
+                entity.HasIndex(segment => new { segment.SessionId, segment.UserId })
+                    .IsUnique()
+                    .HasFilter("[LeftAt] IS NULL");
             });
 
             modelBuilder.Entity<PointTransaction>(entity =>

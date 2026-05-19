@@ -14,6 +14,7 @@ namespace EdSkill.Application.Common.Interfaces
         public DbSet<SubscriptionPlan> SubscriptionPlans { get; }
         public DbSet<UserSubscription> UserSubscriptions { get; }
         public DbSet<Session> Sessions { get; }
+        public DbSet<SessionPresenceSegment> SessionPresenceSegments { get; }
         public DbSet<SystemConfig> SystemConfigs { get; }
         public DbSet<SystemLedgerAccount> SystemLedgerAccounts { get; }
         public DbSet<PolicyDocument> PolicyDocuments { get; }

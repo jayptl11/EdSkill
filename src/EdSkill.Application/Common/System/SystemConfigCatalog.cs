@@ -20,7 +20,9 @@ public static class SystemConfigCatalog
         new(SystemConfigKeys.SessionLateCancelCompanionPct, "80", "% diem Companion nhan khi Learner huy muon."),
         new(SystemConfigKeys.SessionLateCancelPlatformPct, "20", "% diem nen tang nhan khi Learner huy muon."),
         new(SystemConfigKeys.SessionMaxPerDayPerCompanion, "8", "So phien toi da mot Companion mo trong ngay."),
-        new(SystemConfigKeys.SessionBufferMinutes, "10", "Thoi gian nghi toi thieu giua hai phien.")
+        new(SystemConfigKeys.SessionBufferMinutes, "10", "Thoi gian nghi toi thieu giua hai phien."),
+        new(SystemConfigKeys.SessionJoinEarlyMinutes, "10", "So phut duoc vao phong truoc gio hoc."),
+        new(SystemConfigKeys.SessionJoinLateGraceMinutes, "30", "So phut cho phep vao phong sau gio ket thuc du kien.")
     ];
 
     public static bool TryGet(string key, out SystemConfigDefinition definition)
@@ -63,6 +65,8 @@ public static class SystemConfigCatalog
             SystemConfigKeys.SessionLateCancelPlatformPct => number is >= 0 and <= 100,
             SystemConfigKeys.SessionMaxPerDayPerCompanion => number > 0,
             SystemConfigKeys.SessionBufferMinutes => number >= 0,
+            SystemConfigKeys.SessionJoinEarlyMinutes => number >= 0,
+            SystemConfigKeys.SessionJoinLateGraceMinutes => number >= 0,
             _ => false
         };
 

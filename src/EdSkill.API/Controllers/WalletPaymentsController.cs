@@ -1,4 +1,5 @@
 using EdSkill.Application.Common.Models;
+using EdSkill.Application.Features.Wallet.Commands.RetryPointPurchase;
 using EdSkill.Application.Features.Wallet.DTOs;
 using EdSkill.Application.Features.Wallet.Queries.GetMyPayments;
 using MediatR;
@@ -31,6 +32,17 @@ public class WalletPaymentsController : ControllerBase
         return ToActionResult(result);
     }
 
+    [HttpPost("{paymentTransactionId:guid}/retry")]
+    [ProducesResponseType(typeof(CreatePointPurchaseResultDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> RetryPayment(Guid paymentTransactionId, CancellationToken cancellationToken)
+    {
+        var result = await _sender.Send(new RetryPointPurchaseCommand(paymentTransactionId), cancellationToken);
+        return ToActionResult(result);
+    }
+
     private IActionResult ToActionResult<T>(Result<T> result)
     {
         if (result.IsSuccess)
@@ -38,6 +50,12 @@ public class WalletPaymentsController : ControllerBase
             return Ok(result.Value);
         }
 
-        return BadRequest(new { result.ErrorCode, result.ErrorMessage });
+        return result.ErrorCode switch
+        {
+            "PAYMENT_TRANSACTION_NOT_FOUND" or "POINT_PACKAGE_NOT_FOUND" => NotFound(new { result.ErrorCode, result.ErrorMessage }),
+            "FORBIDDEN" => StatusCode(StatusCodes.Status403Forbidden, new { result.ErrorCode, result.ErrorMessage }),
+            "POINT_PACKAGE_NOT_AVAILABLE" or "PAYMENT_RETRY_INVALID_STATUS" => Conflict(new { result.ErrorCode, result.ErrorMessage }),
+            _ => BadRequest(new { result.ErrorCode, result.ErrorMessage })
+        };
     }
 }

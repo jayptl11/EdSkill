@@ -37,6 +37,7 @@ public class Session
     public string? CancelReason { get; set; }
     public DateTime? CancelledAt { get; set; }
     public DateTime? DisbursedAt { get; set; }
+    public virtual ICollection<SessionPresenceSegment> PresenceSegments { get; set; } = new List<SessionPresenceSegment>();
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 }

@@ -1,8 +1,9 @@
 using EdSkill.Application.Common.Interfaces;
 using EdSkill.Application.Common.Models;
+using EdSkill.Application.Common.System;
 using EdSkill.Application.Features.Sessions;
 using EdSkill.Application.Features.Sessions.DTOs;
-using EdSkill.Domain.Enums;
+using EdSkill.Domain.Entities;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -14,17 +15,20 @@ public class JoinSessionCommandHandler : IRequestHandler<JoinSessionCommand, Res
     private readonly ICurrentUserService _currentUserService;
     private readonly ITransactionExecutor _transactionExecutor;
     private readonly IDateTimeProvider _dateTimeProvider;
+    private readonly ISystemConfigService _systemConfigService;
 
     public JoinSessionCommandHandler(
         IApplicationDbContext context,
         ICurrentUserService currentUserService,
         ITransactionExecutor transactionExecutor,
-        IDateTimeProvider dateTimeProvider)
+        IDateTimeProvider dateTimeProvider,
+        ISystemConfigService systemConfigService)
     {
         _context = context;
         _currentUserService = currentUserService;
         _transactionExecutor = transactionExecutor;
         _dateTimeProvider = dateTimeProvider;
+        _systemConfigService = systemConfigService;
     }
 
     public async Task<Result<SessionDto>> Handle(JoinSessionCommand request, CancellationToken cancellationToken)
@@ -44,18 +48,31 @@ public class JoinSessionCommandHandler : IRequestHandler<JoinSessionCommand, Res
                 return Result<SessionDto>.Failure("FORBIDDEN", "You do not have access to this session.");
             }
 
-            if (session.Status is not (SessionStatus.Confirmed or SessionStatus.InProgress))
+            var joinEarlyMinutes = await _systemConfigService.GetIntValueAsync(SystemConfigKeys.SessionJoinEarlyMinutes, ct);
+            var joinLateGraceMinutes = await _systemConfigService.GetIntValueAsync(SystemConfigKeys.SessionJoinLateGraceMinutes, ct);
+            var decision = SessionRoomAccessPolicy.Evaluate(session, _dateTimeProvider.UtcNow, joinEarlyMinutes, joinLateGraceMinutes);
+            if (!decision.CanJoin)
             {
-                return Result<SessionDto>.Failure("SESSION_INVALID_STATUS", "Hành động không hợp lệ với trạng thái hiện tại.");
+                return Result<SessionDto>.Failure(decision.DenyCode!, decision.DenyMessage!);
             }
 
-            if (session.DeliveryMode != SessionDeliveryMode.Online)
+            var existingOpenSegment = await _context.SessionPresenceSegments
+                .FirstOrDefaultAsync(
+                    item => item.SessionId == session.SessionId && item.UserId == userId && !item.LeftAt.HasValue,
+                    ct);
+
+            if (existingOpenSegment == null)
             {
-                return Result<SessionDto>.Failure("SESSION_NOT_ONLINE", "Only online sessions support join tracking.");
+                _context.SessionPresenceSegments.Add(new SessionPresenceSegment
+                {
+                    SessionId = session.SessionId,
+                    UserId = userId,
+                    JoinedAt = _dateTimeProvider.UtcNow
+                });
             }
 
             session.ActualStartAt ??= _dateTimeProvider.UtcNow;
-            session.Status = SessionStatus.InProgress;
+            session.Status = Domain.Enums.SessionStatus.InProgress;
             session.UpdatedAt = _dateTimeProvider.UtcNow;
 
             return Result<SessionDto>.Success(SessionDtoMapper.Map(session));

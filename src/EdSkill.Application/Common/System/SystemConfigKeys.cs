@@ -15,4 +15,6 @@ public static class SystemConfigKeys
     public const string SessionLateCancelPlatformPct = "session.late_cancel_platform_pct";
     public const string SessionMaxPerDayPerCompanion = "session.max_per_day_per_companion";
     public const string SessionBufferMinutes = "session.buffer_minutes";
+    public const string SessionJoinEarlyMinutes = "session.join_early_minutes";
+    public const string SessionJoinLateGraceMinutes = "session.join_late_grace_minutes";
 }
