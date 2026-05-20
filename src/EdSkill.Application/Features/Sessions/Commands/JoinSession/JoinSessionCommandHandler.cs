@@ -48,9 +48,23 @@ public class JoinSessionCommandHandler : IRequestHandler<JoinSessionCommand, Res
                 return Result<SessionDto>.Failure("FORBIDDEN", "You do not have access to this session.");
             }
 
+            var isCompanion = session.CompanionId == userId;
+            var hasCompanionJoined = await _context.SessionPresenceSegments
+                .AnyAsync(
+                    item => item.SessionId == session.SessionId
+                        && item.UserId == session.CompanionId
+                        && !item.LeftAt.HasValue,
+                    ct);
+
             var joinEarlyMinutes = await _systemConfigService.GetIntValueAsync(SystemConfigKeys.SessionJoinEarlyMinutes, ct);
             var joinLateGraceMinutes = await _systemConfigService.GetIntValueAsync(SystemConfigKeys.SessionJoinLateGraceMinutes, ct);
-            var decision = SessionRoomAccessPolicy.Evaluate(session, _dateTimeProvider.UtcNow, joinEarlyMinutes, joinLateGraceMinutes);
+            var decision = SessionRoomAccessPolicy.Evaluate(
+                session,
+                _dateTimeProvider.UtcNow,
+                joinEarlyMinutes,
+                joinLateGraceMinutes,
+                isCompanion,
+                hasCompanionJoined);
             if (!decision.CanJoin)
             {
                 return Result<SessionDto>.Failure(decision.DenyCode!, decision.DenyMessage!);

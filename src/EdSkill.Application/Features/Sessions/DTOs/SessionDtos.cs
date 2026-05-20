@@ -81,6 +81,8 @@ public record SessionRoomAccessDto(
     string? AvatarUrl,
     string Role,
     SessionStatus Status,
+    bool HostReady,
+    bool HasCompanionJoined,
     bool CanJoin,
     string? DenyCode,
     string? DenyMessage,

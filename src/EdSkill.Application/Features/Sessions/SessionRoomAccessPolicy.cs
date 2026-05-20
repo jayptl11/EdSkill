@@ -20,7 +20,13 @@ internal static class SessionRoomAccessPolicy
         return new SessionJoinWindow(durationMinutes, joinOpenAt, joinCloseAt);
     }
 
-    public static SessionJoinDecision Evaluate(Session session, DateTime utcNow, int joinEarlyMinutes, int joinLateGraceMinutes)
+    public static SessionJoinDecision Evaluate(
+        Session session,
+        DateTime utcNow,
+        int joinEarlyMinutes,
+        int joinLateGraceMinutes,
+        bool isCompanion,
+        bool hasCompanionJoined)
     {
         var window = BuildJoinWindow(session, joinEarlyMinutes, joinLateGraceMinutes);
 
@@ -42,6 +48,11 @@ internal static class SessionRoomAccessPolicy
         if (utcNow < window.JoinOpenAt || utcNow > window.JoinCloseAt)
         {
             return new SessionJoinDecision(false, "SESSION_JOIN_WINDOW_CLOSED", "Session room is outside the allowed join window.", window);
+        }
+
+        if (!isCompanion && !hasCompanionJoined)
+        {
+            return new SessionJoinDecision(false, "SESSION_HOST_NOT_READY", "Companion has not opened the room yet.", window);
         }
 
         return new SessionJoinDecision(true, null, null, window);

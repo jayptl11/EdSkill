@@ -44,9 +44,24 @@ public class GetSessionRoomAccessQueryHandler : IRequestHandler<GetSessionRoomAc
             return Result<SessionRoomAccessDto>.Failure("FORBIDDEN", "You do not have access to this session room.");
         }
 
+        var isCompanion = session.CompanionId == userId;
+        var hasCompanionJoined = await _context.SessionPresenceSegments
+            .AsNoTracking()
+            .AnyAsync(
+                item => item.SessionId == session.SessionId
+                    && item.UserId == session.CompanionId
+                    && !item.LeftAt.HasValue,
+                cancellationToken);
+
         var joinEarlyMinutes = await _systemConfigService.GetIntValueAsync(SystemConfigKeys.SessionJoinEarlyMinutes, cancellationToken);
         var joinLateGraceMinutes = await _systemConfigService.GetIntValueAsync(SystemConfigKeys.SessionJoinLateGraceMinutes, cancellationToken);
-        var decision = SessionRoomAccessPolicy.Evaluate(session, _dateTimeProvider.UtcNow, joinEarlyMinutes, joinLateGraceMinutes);
+        var decision = SessionRoomAccessPolicy.Evaluate(
+            session,
+            _dateTimeProvider.UtcNow,
+            joinEarlyMinutes,
+            joinLateGraceMinutes,
+            isCompanion,
+            hasCompanionJoined);
 
         var currentUser = await _context.Users
             .AsNoTracking()
@@ -57,7 +72,7 @@ public class GetSessionRoomAccessQueryHandler : IRequestHandler<GetSessionRoomAc
             ? currentUser?.Username ?? "User"
             : currentUser!.UserProfile!.DisplayName;
         var avatarUrl = currentUser?.UserProfile?.AvatarUrl;
-        var role = session.CompanionId == userId ? "companion" : "learner";
+        var role = isCompanion ? "companion" : "learner";
 
         return Result<SessionRoomAccessDto>.Success(new SessionRoomAccessDto(
             session.SessionId,
@@ -67,6 +82,8 @@ public class GetSessionRoomAccessQueryHandler : IRequestHandler<GetSessionRoomAc
             avatarUrl,
             role,
             session.Status,
+            hasCompanionJoined,
+            hasCompanionJoined,
             decision.CanJoin,
             decision.DenyCode,
             decision.DenyMessage,

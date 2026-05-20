@@ -89,6 +89,119 @@ public class JoinSessionCommandHandlerTests
     }
 
     [Fact]
+    public async Task Handle_WhenLearnerJoinsBeforeCompanion_ReturnsHostNotReady()
+    {
+        var now = new DateTime(2026, 5, 19, 9, 55, 0, DateTimeKind.Utc);
+        var companionId = Guid.NewGuid();
+        var learnerId = Guid.NewGuid();
+        var sessionId = Guid.NewGuid();
+        var sessions = new List<Session>
+        {
+            new()
+            {
+                SessionId = sessionId,
+                CompanionId = companionId,
+                LearnerId = learnerId,
+                Skill = "Python",
+                DeliveryMode = SessionDeliveryMode.Online,
+                DurationMinutes = 60,
+                PointCost = 100,
+                ScheduledAt = now.AddMinutes(5),
+                Status = SessionStatus.Confirmed,
+                JitsiRoomId = $"edskill-{sessionId:N}"
+            }
+        };
+        var presenceSegments = new List<SessionPresenceSegment>();
+
+        var handler = CreateHandler(learnerId, sessions, presenceSegments, now, out _);
+
+        var result = await handler.Handle(new JoinSessionCommand(sessionId), CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be("SESSION_HOST_NOT_READY");
+        presenceSegments.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Handle_WhenCompanionJoinsFirst_ReturnsSuccessAndCreatesSegment()
+    {
+        var now = new DateTime(2026, 5, 19, 9, 55, 0, DateTimeKind.Utc);
+        var companionId = Guid.NewGuid();
+        var learnerId = Guid.NewGuid();
+        var sessionId = Guid.NewGuid();
+        var sessions = new List<Session>
+        {
+            new()
+            {
+                SessionId = sessionId,
+                CompanionId = companionId,
+                LearnerId = learnerId,
+                Skill = "Python",
+                DeliveryMode = SessionDeliveryMode.Online,
+                DurationMinutes = 60,
+                PointCost = 100,
+                ScheduledAt = now.AddMinutes(5),
+                Status = SessionStatus.Confirmed,
+                JitsiRoomId = $"edskill-{sessionId:N}"
+            }
+        };
+        var presenceSegments = new List<SessionPresenceSegment>();
+
+        var handler = CreateHandler(companionId, sessions, presenceSegments, now, out _);
+
+        var result = await handler.Handle(new JoinSessionCommand(sessionId), CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        presenceSegments.Should().ContainSingle();
+        presenceSegments[0].UserId.Should().Be(companionId);
+        sessions[0].Status.Should().Be(SessionStatus.InProgress);
+    }
+
+    [Fact]
+    public async Task Handle_WhenLearnerJoinsAfterCompanionIsReady_ReturnsSuccess()
+    {
+        var now = new DateTime(2026, 5, 19, 10, 0, 0, DateTimeKind.Utc);
+        var companionId = Guid.NewGuid();
+        var learnerId = Guid.NewGuid();
+        var sessionId = Guid.NewGuid();
+        var sessions = new List<Session>
+        {
+            new()
+            {
+                SessionId = sessionId,
+                CompanionId = companionId,
+                LearnerId = learnerId,
+                Skill = "Python",
+                DeliveryMode = SessionDeliveryMode.Online,
+                DurationMinutes = 60,
+                PointCost = 100,
+                ScheduledAt = now,
+                Status = SessionStatus.InProgress,
+                JitsiRoomId = $"edskill-{sessionId:N}",
+                ActualStartAt = now.AddMinutes(-2)
+            }
+        };
+        var presenceSegments = new List<SessionPresenceSegment>
+        {
+            new()
+            {
+                SessionPresenceSegmentId = Guid.NewGuid(),
+                SessionId = sessionId,
+                UserId = companionId,
+                JoinedAt = now.AddMinutes(-2)
+            }
+        };
+
+        var handler = CreateHandler(learnerId, sessions, presenceSegments, now, out _);
+
+        var result = await handler.Handle(new JoinSessionCommand(sessionId), CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        presenceSegments.Should().HaveCount(2);
+        presenceSegments.Should().Contain(item => item.UserId == learnerId && item.LeftAt == null);
+    }
+
+    [Fact]
     public async Task Handle_WhenOutsideJoinWindow_ReturnsFailure()
     {
         var now = new DateTime(2026, 5, 19, 12, 31, 0, DateTimeKind.Utc);
