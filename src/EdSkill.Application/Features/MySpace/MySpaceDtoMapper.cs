@@ -20,7 +20,8 @@ internal static class MySpaceDtoMapper
         Skill? skill,
         UserProfile? companionProfile,
         int? platformMarkupPct,
-        IDictionary<Guid, MySpaceUserSummaryDto> userLookup)
+        IDictionary<Guid, MySpaceUserSummaryDto> userLookup,
+        MySpaceRoomAccessDto? roomAccess)
     {
         var companion = ResolveUser(userLookup, session.CompanionId);
         var learner = session.LearnerId.HasValue
@@ -31,7 +32,8 @@ internal static class MySpaceDtoMapper
             SessionDtoMapper.Map(session, skill, companionProfile, platformMarkupPct),
             skill is null ? null : new MySpaceSkillDto(skill.SkillId, skill.Name, skill.IconKey),
             companion,
-            learner);
+            learner,
+            roomAccess);
     }
 
     private static MySpaceUserSummaryDto ResolveUser(

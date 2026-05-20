@@ -15,11 +15,23 @@ public record MySpaceUserSummaryDto(
     string? AvatarUrl
 );
 
+public record MySpaceRoomAccessDto(
+    bool CanOpenRoomPage,
+    bool CanJoinNow,
+    bool HostReady,
+    bool HasCompanionJoined,
+    string? DenyCode,
+    string? DenyMessage,
+    DateTime JoinOpenAt,
+    DateTime JoinCloseAt
+);
+
 public record MySpaceSessionDto(
     SessionDto Session,
     MySpaceSkillDto? Skill,
     MySpaceUserSummaryDto Companion,
-    MySpaceUserSummaryDto? Learner
+    MySpaceUserSummaryDto? Learner,
+    MySpaceRoomAccessDto? RoomAccess
 );
 
 public record MySpaceDto(
