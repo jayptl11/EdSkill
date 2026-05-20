@@ -1,11 +1,20 @@
-﻿using EdSkill.Application.Common.Interfaces;
+using EdSkill.Application.Common.Interfaces;
 using Microsoft.AspNetCore.Http;
+using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 
 namespace EdSkill.Infrastructure.Services;
 
 public class CurrentUserService : ICurrentUserService
 {
+    private static readonly string[] UserIdClaimTypes =
+    [
+        ClaimTypes.NameIdentifier,
+        JwtRegisteredClaimNames.Sub,
+        "sub",
+        "nameid"
+    ];
+
     private readonly IHttpContextAccessor _httpContextAccessor;
 
     public CurrentUserService(IHttpContextAccessor httpContextAccessor)
@@ -26,8 +35,10 @@ public class CurrentUserService : ICurrentUserService
 
     public Guid? TryGetUserId()
     {
-        var userIdClaim = _httpContextAccessor.HttpContext?.User
-            .FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        var principal = _httpContextAccessor.HttpContext?.User;
+        var userIdClaim = UserIdClaimTypes
+            .Select(claimType => principal?.FindFirst(claimType)?.Value)
+            .FirstOrDefault(value => !string.IsNullOrWhiteSpace(value));
 
         if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out var userId))
         {
