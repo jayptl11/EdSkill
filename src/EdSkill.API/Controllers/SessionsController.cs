@@ -1,3 +1,4 @@
+using EdSkill.API.Realtime;
 using EdSkill.Application.Common.Models;
 using EdSkill.Application.Features.Sessions.Commands.BookSession;
 using EdSkill.Application.Features.Sessions.Commands.CancelSession;
@@ -24,10 +25,12 @@ namespace EdSkill.API.Controllers;
 public class SessionsController : ControllerBase
 {
     private readonly ISender _sender;
+    private readonly ISessionRealtimePublisher _sessionRealtimePublisher;
 
-    public SessionsController(ISender sender)
+    public SessionsController(ISender sender, ISessionRealtimePublisher sessionRealtimePublisher)
     {
         _sender = sender;
+        _sessionRealtimePublisher = sessionRealtimePublisher;
     }
 
     [HttpPost]
@@ -75,6 +78,7 @@ public class SessionsController : ControllerBase
     public async Task<IActionResult> BookSession(Guid id, [FromBody] BookSessionRequest request, CancellationToken cancellationToken)
     {
         var result = await _sender.Send(new BookSessionCommand(id, request.SelectedDurationMinutes), cancellationToken);
+        await PublishSessionRealtimeAsync(result, includeRoomState: false, cancellationToken);
         return ToActionResult(result);
     }
 
@@ -83,6 +87,7 @@ public class SessionsController : ControllerBase
     public async Task<IActionResult> ConfirmSession(Guid id, CancellationToken cancellationToken)
     {
         var result = await _sender.Send(new ConfirmSessionCommand(id), cancellationToken);
+        await PublishSessionRealtimeAsync(result, includeRoomState: true, cancellationToken);
         return ToActionResult(result);
     }
 
@@ -91,6 +96,7 @@ public class SessionsController : ControllerBase
     public async Task<IActionResult> RejectSession(Guid id, [FromBody] RejectSessionRequest request, CancellationToken cancellationToken)
     {
         var result = await _sender.Send(new RejectSessionCommand(id, request.Reason), cancellationToken);
+        await PublishSessionRealtimeAsync(result, includeRoomState: true, cancellationToken);
         return ToActionResult(result);
     }
 
@@ -99,6 +105,7 @@ public class SessionsController : ControllerBase
     public async Task<IActionResult> CancelSession(Guid id, [FromBody] CancelSessionRequest request, CancellationToken cancellationToken)
     {
         var result = await _sender.Send(new CancelSessionCommand(id, request.Reason), cancellationToken);
+        await PublishSessionRealtimeAsync(result, includeRoomState: true, cancellationToken);
         return ToActionResult(result);
     }
 
@@ -107,6 +114,7 @@ public class SessionsController : ControllerBase
     public async Task<IActionResult> JoinSession(Guid id, CancellationToken cancellationToken)
     {
         var result = await _sender.Send(new JoinSessionCommand(id), cancellationToken);
+        await PublishSessionRealtimeAsync(result, includeRoomState: true, cancellationToken);
         return ToActionResult(result);
     }
 
@@ -115,6 +123,7 @@ public class SessionsController : ControllerBase
     public async Task<IActionResult> LeaveSession(Guid id, [FromBody] LeaveSessionRequest request, CancellationToken cancellationToken)
     {
         var result = await _sender.Send(new LeaveSessionCommand(id, request.ActualDuration), cancellationToken);
+        await PublishSessionRealtimeAsync(result, includeRoomState: true, cancellationToken);
         return ToActionResult(result);
     }
 
@@ -131,6 +140,7 @@ public class SessionsController : ControllerBase
     public async Task<IActionResult> ConfirmCompletion(Guid id, CancellationToken cancellationToken)
     {
         var result = await _sender.Send(new ConfirmSessionCompletionCommand(id), cancellationToken);
+        await PublishSessionRealtimeAsync(result, includeRoomState: true, cancellationToken);
         return ToActionResult(result);
     }
 
@@ -140,6 +150,21 @@ public class SessionsController : ControllerBase
     {
         var result = await _sender.Send(new GetSessionStatusQuery(id), cancellationToken);
         return ToActionResult(result);
+    }
+
+    private async Task PublishSessionRealtimeAsync(Result<SessionDto> result, bool includeRoomState, CancellationToken cancellationToken)
+    {
+        if (!result.IsSuccess || result.Value == null)
+        {
+            return;
+        }
+
+        await _sessionRealtimePublisher.PublishSessionUpdatedAsync(result.Value, cancellationToken);
+
+        if (includeRoomState)
+        {
+            await _sessionRealtimePublisher.PublishRoomStateUpdatedAsync(result.Value.SessionId, cancellationToken);
+        }
     }
 
     private IActionResult ToActionResult<T>(Result<T> result)

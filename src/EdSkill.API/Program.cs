@@ -1,4 +1,6 @@
-﻿using EdSkill.API.Middleware;
+using EdSkill.API.Hubs;
+using EdSkill.API.Middleware;
+using EdSkill.API.Realtime;
 using EdSkill.Application;
 using EdSkill.Infrastructure;
 using Microsoft.AspNetCore.HttpOverrides;
@@ -10,6 +12,9 @@ builder.Configuration.AddEnvironmentVariables();
 
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
+builder.Services.AddSignalR();
+builder.Services.AddScoped<ISessionRealtimeSnapshotBuilder, SessionRealtimeSnapshotBuilder>();
+builder.Services.AddScoped<ISessionRealtimePublisher, SignalRSessionRealtimePublisher>();
 
 var allowedOrigins = builder.Configuration.GetSection("CorsSettings:AllowedOrigins").Get<string[]>() ?? [];
 
@@ -37,7 +42,6 @@ builder.Services.AddControllers()
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
-
     options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Name = "Authorization",
@@ -84,6 +88,7 @@ app.UseAuthentication();
 app.UseMiddleware<TokenBlacklistMiddleware>();
 app.UseMiddleware<SuspendedUserMiddleware>();
 app.UseAuthorization();
+app.MapHub<SessionRealtimeHub>("/hubs/sessions");
 app.MapControllers();
 
 app.MapGet("/", () => Results.Redirect("/swagger"));

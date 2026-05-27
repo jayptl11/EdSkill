@@ -60,6 +60,21 @@ public static class DependencyInjection
                 ValidAudience = jwtSettings?.Audience,
                 IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings?.SecretKey ?? string.Empty))
             };
+            options.Events = new JwtBearerEvents
+            {
+                OnMessageReceived = context =>
+                {
+                    var accessToken = context.Request.Query["access_token"];
+                    var requestPath = context.HttpContext.Request.Path;
+
+                    if (!string.IsNullOrWhiteSpace(accessToken) && requestPath.StartsWithSegments("/hubs/sessions"))
+                    {
+                        context.Token = accessToken;
+                    }
+
+                    return Task.CompletedTask;
+                }
+            };
         });
 
         var redisConnectionString = configuration["Redis:ConnectionString"];

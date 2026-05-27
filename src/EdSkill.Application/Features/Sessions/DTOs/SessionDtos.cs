@@ -92,6 +92,21 @@ public record SessionRoomAccessDto(
     DateTime JoinCloseAt
 );
 
+public record SessionRoomStateDto(
+    Guid SessionId,
+    SessionStatus Status,
+    string? JitsiRoomId,
+    bool HasCompanionJoined,
+    bool HasLearnerJoined,
+    int ActiveParticipantCount,
+    DateTime? ActualStartAt,
+    DateTime? ActualEndAt,
+    int? ActualDuration,
+    DateTime JoinOpenAt,
+    DateTime JoinCloseAt,
+    DateTime UpdatedAt
+);
+
 public record CreateSessionRequest(
     Guid SkillId,
     string? Description,

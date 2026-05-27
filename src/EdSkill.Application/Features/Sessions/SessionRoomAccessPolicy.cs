@@ -3,9 +3,9 @@ using EdSkill.Domain.Enums;
 
 namespace EdSkill.Application.Features.Sessions;
 
-internal static class SessionRoomAccessPolicy
+public static class SessionRoomAccessPolicy
 {
-    internal const string JitsiDomain = "meet.jit.si";
+    public const string JitsiDomain = "meet.jit.si";
 
     public static int ResolveDurationMinutes(Session session)
     {
@@ -59,13 +59,13 @@ internal static class SessionRoomAccessPolicy
     }
 }
 
-internal sealed record SessionJoinWindow(
+public sealed record SessionJoinWindow(
     int DurationMinutes,
     DateTime JoinOpenAt,
     DateTime JoinCloseAt
 );
 
-internal sealed record SessionJoinDecision(
+public sealed record SessionJoinDecision(
     bool CanJoin,
     string? DenyCode,
     string? DenyMessage,
