@@ -29,7 +29,7 @@ public class GetMySpaceQueryHandlerTests
             Description = "Open basics session",
             DurationMinutes = 60,
             PointCost = 250,
-            ScheduledAt = new DateTime(2026, 5, 22, 9, 0, 0, DateTimeKind.Utc),
+            ScheduledAt = new DateTime(2026, 5, 25, 9, 0, 0, DateTimeKind.Utc),
             Status = SessionStatus.Available,
             DeliveryMode = SessionDeliveryMode.Online
         };
@@ -144,11 +144,10 @@ public class GetMySpaceQueryHandlerTests
         result.Value!.CompanionSessions.Should().HaveCount(2);
         result.Value.LearnerSessions.Should().HaveCount(1);
 
-        var firstCompanionSession = result.Value.CompanionSessions.First();
-        firstCompanionSession.Session.SessionId.Should().Be(openedBookedSession.SessionId);
-        firstCompanionSession.Skill!.IconKey.Should().Be("code");
-        firstCompanionSession.Companion.DisplayName.Should().Be("Current User");
-        firstCompanionSession.Learner!.DisplayName.Should().Be("Learner User");
+        var bookedCompanionSession = result.Value.CompanionSessions.Single(item => item.Session.SessionId == openedBookedSession.SessionId);
+        bookedCompanionSession.Skill!.IconKey.Should().Be("code");
+        bookedCompanionSession.Companion.DisplayName.Should().Be("Current User");
+        bookedCompanionSession.Learner!.DisplayName.Should().Be("Learner User");
 
         var availableCompanionSession = result.Value.CompanionSessions.Single(item => item.Session.SessionId == openedAvailableSession.SessionId);
         availableCompanionSession.Learner.Should().BeNull();
@@ -196,14 +195,14 @@ public class GetMySpaceQueryHandlerTests
     }
 
     [Fact]
-    public async Task Handle_WhenOnlineSessionIsPastJoinCloseAt_ReturnsRoomAccessThatHidesJoinButton()
+    public async Task Handle_WhenSessionsArePastTheirEndTime_HidesThemFromMySpace()
     {
         var now = new DateTime(2026, 5, 23, 22, 6, 0, DateTimeKind.Utc);
         var currentUserId = Guid.NewGuid();
         var companionId = Guid.NewGuid();
         var skillId = Guid.NewGuid();
 
-        var learnerBookedSession = new Session
+        var pastLearnerSession = new Session
         {
             SessionId = Guid.NewGuid(),
             CompanionId = companionId,
@@ -216,6 +215,21 @@ public class GetMySpaceQueryHandlerTests
             ScheduledAt = new DateTime(2026, 5, 23, 19, 35, 0, DateTimeKind.Utc),
             Status = SessionStatus.InProgress,
             JitsiRoomId = "edskill-room"
+        };
+
+        var pastCompanionSession = new Session
+        {
+            SessionId = Guid.NewGuid(),
+            CompanionId = currentUserId,
+            LearnerId = companionId,
+            SkillId = skillId,
+            Skill = "JavaScript",
+            DeliveryMode = SessionDeliveryMode.Online,
+            DurationMinutes = 60,
+            PointCost = 300,
+            ScheduledAt = new DateTime(2026, 5, 23, 20, 0, 0, DateTimeKind.Utc),
+            Status = SessionStatus.Confirmed,
+            JitsiRoomId = "edskill-room-2"
         };
 
         var users = new List<User>
@@ -255,7 +269,7 @@ public class GetMySpaceQueryHandlerTests
         };
 
         var contextMock = new Mock<IApplicationDbContext>();
-        contextMock.SetupGet(x => x.Sessions).Returns(new[] { learnerBookedSession }.BuildMockDbSet().Object);
+        contextMock.SetupGet(x => x.Sessions).Returns(new[] { pastLearnerSession, pastCompanionSession }.BuildMockDbSet().Object);
         contextMock.SetupGet(x => x.SessionPresenceSegments).Returns(Array.Empty<SessionPresenceSegment>().BuildMockDbSet().Object);
         contextMock.SetupGet(x => x.Users).Returns(users.BuildMockDbSet().Object);
         contextMock.SetupGet(x => x.Skills).Returns(skills.BuildMockDbSet().Object);
@@ -280,12 +294,8 @@ public class GetMySpaceQueryHandlerTests
         var result = await handler.Handle(new GetMySpaceQuery(), CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
-        var learnerSession = result.Value!.LearnerSessions.Single();
-        learnerSession.RoomAccess.Should().NotBeNull();
-        learnerSession.RoomAccess!.CanOpenRoomPage.Should().BeFalse();
-        learnerSession.RoomAccess.CanJoinNow.Should().BeFalse();
-        learnerSession.RoomAccess.DenyCode.Should().Be("SESSION_JOIN_WINDOW_CLOSED");
-        learnerSession.RoomAccess.JoinCloseAt.Should().Be(new DateTime(2026, 5, 23, 22, 5, 0, DateTimeKind.Utc));
+        result.Value!.CompanionSessions.Should().BeEmpty();
+        result.Value.LearnerSessions.Should().BeEmpty();
     }
 
     [Fact]

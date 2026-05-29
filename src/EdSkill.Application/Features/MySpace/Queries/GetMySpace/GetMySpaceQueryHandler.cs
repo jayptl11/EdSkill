@@ -35,18 +35,23 @@ public class GetMySpaceQueryHandler : IRequestHandler<GetMySpaceQuery, Result<My
     public async Task<Result<MySpaceDto>> Handle(GetMySpaceQuery request, CancellationToken cancellationToken)
     {
         var userId = _currentUserService.GetUserId();
+        var utcNow = _dateTimeProvider.UtcNow;
 
-        var companionSessions = await _context.Sessions
+        var companionSessions = (await _context.Sessions
             .AsNoTracking()
             .Where(session => session.CompanionId == userId)
             .OrderByDescending(session => session.ScheduledAt)
-            .ToListAsync(cancellationToken);
+            .ToListAsync(cancellationToken))
+            .Where(session => ShouldShowInMySpace(session, utcNow))
+            .ToList();
 
-        var learnerSessions = await _context.Sessions
+        var learnerSessions = (await _context.Sessions
             .AsNoTracking()
             .Where(session => session.LearnerId == userId)
             .OrderByDescending(session => session.ScheduledAt)
-            .ToListAsync(cancellationToken);
+            .ToListAsync(cancellationToken))
+            .Where(session => ShouldShowInMySpace(session, utcNow))
+            .ToList();
 
         var allSessions = companionSessions.Concat(learnerSessions).ToList();
         if (allSessions.Count == 0)
@@ -188,5 +193,11 @@ public class GetMySpaceQueryHandler : IRequestHandler<GetMySpaceQuery, Result<My
             decision.DenyMessage,
             decision.Window.JoinOpenAt,
             decision.Window.JoinCloseAt);
+    }
+
+    private static bool ShouldShowInMySpace(Session session, DateTime utcNow)
+    {
+        var sessionEndsAt = session.ScheduledAt.AddMinutes(SessionRoomAccessPolicy.ResolveDurationMinutes(session));
+        return sessionEndsAt >= utcNow;
     }
 }
