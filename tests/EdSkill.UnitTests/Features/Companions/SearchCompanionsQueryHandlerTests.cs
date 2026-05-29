@@ -306,12 +306,57 @@ public class SearchCompanionsQueryHandlerTests
             .Should().BeEquivalentTo(new[] { "Canva", "Speaking" }, options => options.WithStrictOrdering());
     }
 
+    [Fact]
+    public async Task Handle_WhenSkillFilterProvided_OrdersByNewestOfferBeforePriorityVisibility()
+    {
+        var now = new DateTime(2026, 5, 29, 10, 0, 0, DateTimeKind.Utc);
+        var skillId = Guid.NewGuid();
+        var olderPriorityCompanionId = Guid.NewGuid();
+        var newerCompanionId = Guid.NewGuid();
+        var skill = CreateSkill(skillId, "Speaking");
+        var users = new List<User>
+        {
+            CreateCompanion(olderPriorityCompanionId, skill, credentialCount: 1, displayName: "Priority Companion"),
+            CreateCompanion(newerCompanionId, skill, credentialCount: 1, displayName: "Newer Companion")
+        };
+        var sessions = new List<Session>
+        {
+            CreateFormulaSession(olderPriorityCompanionId, skillId, "Speaking", 60, now.AddDays(1), createdAt: now.AddDays(-2), description: "Older priority class"),
+            CreateFormulaSession(newerCompanionId, skillId, "Speaking", 60, now.AddDays(2), createdAt: now.AddHours(-1), description: "Newest class")
+        };
+
+        var entitlements = new Dictionary<Guid, ResolvedSubscriptionEntitlements>
+        {
+            [olderPriorityCompanionId] = new(
+                ActiveSubscriptions: [],
+                HasLearnerCoverage: false,
+                HasCompanionCoverage: true,
+                CompanionBadgeText: "Companion Pro",
+                HasPriorityVisibility: true,
+                CompanionDailySessionLimitOverride: null,
+                LearnerTokenRewardRatePercent: null,
+                CompanionTokenRewardRatePercent: null,
+                WeeklyLearnerSessionBonusPoints: 0,
+                WeeklyCompanionSessionBonusPoints: 0)
+        };
+        var handler = CreateHandler(users, sessions, new[] { skill }, now: now, entitlements: entitlements);
+
+        var result = await handler.Handle(
+            new SearchCompanionsQuery(skillId, null, null, null, null, null, 1, 10),
+            CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.Data.Select(item => item.Offer.Description)
+            .Should().Equal("Newest class", "Older priority class");
+    }
+
     private static SearchCompanionsQueryHandler CreateHandler(
         IReadOnlyCollection<User> users,
         IReadOnlyCollection<Session> sessions,
         IReadOnlyCollection<Skill> skills,
         Guid? currentUserId = null,
-        DateTime? now = null)
+        DateTime? now = null,
+        IReadOnlyDictionary<Guid, ResolvedSubscriptionEntitlements>? entitlements = null)
     {
         var contextMock = new Mock<IApplicationDbContext>();
         contextMock.SetupGet(x => x.Skills).Returns(skills.BuildMockDbSet().Object);
@@ -331,7 +376,7 @@ public class SearchCompanionsQueryHandlerTests
         var subscriptionEntitlementServiceMock = new Mock<ISubscriptionEntitlementService>();
         subscriptionEntitlementServiceMock
             .Setup(x => x.GetResolvedEntitlementsAsync(It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new Dictionary<Guid, ResolvedSubscriptionEntitlements>());
+            .ReturnsAsync(entitlements ?? new Dictionary<Guid, ResolvedSubscriptionEntitlements>());
 
         return new SearchCompanionsQueryHandler(
             contextMock.Object,

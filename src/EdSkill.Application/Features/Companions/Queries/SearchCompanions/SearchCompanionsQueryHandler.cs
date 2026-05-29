@@ -141,8 +141,8 @@ public class SearchCompanionsQueryHandler : IRequestHandler<SearchCompanionsQuer
                 .ThenBy(item => item.Offer.PointCost)
                 .ThenBy(item => item.DisplayName, StringComparer.OrdinalIgnoreCase)
             : items
-                .OrderByDescending(item => item.HasPriorityVisibility)
-                .ThenByDescending(item => item.Offer.CreatedAt)
+                .OrderByDescending(item => item.Offer.CreatedAt)
+                .ThenByDescending(item => item.HasPriorityVisibility)
                 .ThenByDescending(item => item.Offer.ScheduledAt)
                 .ThenBy(item => item.Offer.PointCost)
                 .ThenBy(item => item.DisplayName, StringComparer.OrdinalIgnoreCase);
