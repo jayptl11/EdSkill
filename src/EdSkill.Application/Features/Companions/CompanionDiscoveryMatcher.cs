@@ -10,6 +10,16 @@ namespace EdSkill.Application.Features.Companions;
 
 internal static class CompanionDiscoveryMatcher
 {
+    public static bool HasOwnedTeachingSkill(User user, Guid skillId)
+    {
+        return user.UserSkills.Any(userSkill =>
+            userSkill.Type == UserSkillType.Teach
+            && userSkill.SkillId == skillId
+            && userSkill.Skill is not null
+            && userSkill.Skill.IsActive
+            && !userSkill.Skill.IsDeleted);
+    }
+
     public static async Task<List<Session>> LoadAvailableOnlineSkillSessionsAsync(
         IQueryable<Session> query,
         Skill skill,

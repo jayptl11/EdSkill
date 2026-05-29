@@ -58,12 +58,16 @@ public class SearchCompanionsQueryHandler : IRequestHandler<SearchCompanionsQuer
             .ThenInclude(userSkill => userSkill.Skill)
             .Where(user => companionIds.Contains(user.UserId))
             .ToListAsync(cancellationToken);
+        var eligibleCompanions = companions
+            .Where(user => CompanionDiscoveryMatcher.HasOwnedTeachingSkill(user, skill.SkillId))
+            .ToList();
         var companionEntitlements = await _subscriptionEntitlementService.GetResolvedEntitlementsAsync(companionIds, cancellationToken);
 
-        var companionLookup = companions
+        var companionLookup = eligibleCompanions
             .Where(user => user.UserProfile != null)
             .ToDictionary(user => user.UserId, user => user.UserProfile!);
-        var reviewStats = await LoadReviewStatsAsync(companionIds, cancellationToken);
+        var eligibleCompanionIds = eligibleCompanions.Select(user => user.UserId).ToList();
+        var reviewStats = await LoadReviewStatsAsync(eligibleCompanionIds, cancellationToken);
         var platformMarkupPct = candidateSessions.Any(session => session.PricingModel == SessionPricingModel.FormulaV1)
             ? await _sessionPricingService.GetPlatformMarkupPctAsync(cancellationToken)
             : (int?)null;
@@ -106,7 +110,7 @@ public class SearchCompanionsQueryHandler : IRequestHandler<SearchCompanionsQuer
                     };
                 });
 
-        var items = companions
+        var items = eligibleCompanions
             .Where(user =>
                 user.UserProfile?.IsPublic == true
                 && user.Roles.Contains("companion")

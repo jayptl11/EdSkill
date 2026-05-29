@@ -126,6 +126,35 @@ public class GetCompanionDetailQueryHandlerTests
         result.Value.Sessions.Single().DurationMinutes.Should().Be(90);
     }
 
+    [Fact]
+    public async Task Handle_WhenCompanionNoLongerOwnsRequestedSkill_ReturnsSkillNotFound()
+    {
+        var requestedSkillId = Guid.NewGuid();
+        var currentSkillId = Guid.NewGuid();
+        var companionId = Guid.NewGuid();
+
+        var requestedSkill = CreateSkill(requestedSkillId, "Speaking");
+        var currentSkill = CreateSkill(currentSkillId, "Canva");
+        var users = new List<User>
+        {
+            CreateCompanion(companionId, currentSkill, credentialCount: 1, displayName: "Companion One")
+        };
+
+        var sessions = new List<Session>
+        {
+            CreateFormulaSession(companionId, requestedSkillId, "Speaking", 60, DateTime.UtcNow.AddDays(1))
+        };
+
+        var handler = CreateHandler(users, sessions, new[] { requestedSkill, currentSkill }, Array.Empty<Review>());
+
+        var result = await handler.Handle(
+            new GetCompanionDetailQuery(companionId, requestedSkillId, null, null, null, null, null, 1, 10),
+            CancellationToken.None);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be("SKILL_NOT_FOUND");
+    }
+
     private static GetCompanionDetailQueryHandler CreateHandler(
         IReadOnlyCollection<User> users,
         IReadOnlyCollection<Session> sessions,

@@ -177,6 +177,35 @@ public class SearchCompanionsQueryHandlerTests
         result.Value!.Total.Should().Be(0);
     }
 
+    [Fact]
+    public async Task Handle_WhenCompanionNoLongerOwnsSearchedSkill_ExcludesCompanion()
+    {
+        var searchedSkillId = Guid.NewGuid();
+        var currentSkillId = Guid.NewGuid();
+        var companionId = Guid.NewGuid();
+
+        var searchedSkill = CreateSkill(searchedSkillId, "Speaking");
+        var currentSkill = CreateSkill(currentSkillId, "Canva");
+        var users = new List<User>
+        {
+            CreateCompanion(companionId, currentSkill, credentialCount: 1, displayName: "Companion One")
+        };
+
+        var sessions = new List<Session>
+        {
+            CreateFormulaSession(companionId, searchedSkillId, "Speaking", 60, DateTime.UtcNow.AddDays(1))
+        };
+
+        var handler = CreateHandler(users, sessions, new[] { searchedSkill, currentSkill });
+
+        var result = await handler.Handle(
+            new SearchCompanionsQuery(searchedSkillId, null, null, null, null, null, 1, 10),
+            CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.Total.Should().Be(0);
+    }
+
     private static SearchCompanionsQueryHandler CreateHandler(
         IReadOnlyCollection<User> users,
         IReadOnlyCollection<Session> sessions,

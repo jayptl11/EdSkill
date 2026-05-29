@@ -45,6 +45,11 @@ public class GetCompanionDetailQueryHandler : IRequestHandler<GetCompanionDetail
             return Result<CompanionDetailDto>.Failure("PROFILE_PRIVATE", "This profile is private.");
         }
 
+        if (!CompanionDiscoveryMatcher.HasOwnedTeachingSkill(companion, request.SkillId))
+        {
+            return Result<CompanionDetailDto>.Failure("SKILL_NOT_FOUND", "Skill was not found.");
+        }
+
         var candidateSessions = (await CompanionDiscoveryMatcher
             .LoadAvailableOnlineSkillSessionsAsync(
                 _context.Sessions.AsNoTracking().Where(session => session.CompanionId == request.CompanionId),
