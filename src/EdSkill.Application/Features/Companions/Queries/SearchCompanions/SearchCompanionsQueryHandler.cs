@@ -92,97 +92,64 @@ public class SearchCompanionsQueryHandler : IRequestHandler<SearchCompanionsQuer
             ? await MatchOffersAcrossSkillsAsync(candidateSessions, eligibleCompanions, companionLookup, platformMarkupPct, filters, cancellationToken)
             : CompanionDiscoveryMatcher.MatchOffers(candidateSessions, skill, companionLookup, platformMarkupPct, filters);
 
-        var sessionStats = matchedOffers
-            .GroupBy(session => session.CompanionId)
-            .ToDictionary(
-                group => group.Key,
-                group =>
-                {
-                    var offers = group
-                        .Select(item => item.Offer)
-                        .OrderBy(item => item.ScheduledAt)
-                        .ThenBy(item => item.PointCost)
-                        .ToList();
-
-                    return new CompanionSessionStats(
-                        group.First().CredentialCount,
-                        group.Count(),
-                        offers.Min(item => item.PointCost),
-                        new SessionPricingPreviewDto(
-                            offers.Min(item => item.PricingPreview.MinCompanionPayoutPoints),
-                            offers.Max(item => item.PricingPreview.MaxCompanionPayoutPoints),
-                            offers.Min(item => item.PricingPreview.MinLearnerChargePoints),
-                            offers.Max(item => item.PricingPreview.MaxLearnerChargePoints),
-                            offers.Min(item => item.PricingPreview.MinPlatformFeePoints),
-                            offers.Max(item => item.PricingPreview.MaxPlatformFeePoints)),
-                        offers.Min(item => item.ScheduledAt),
-                        offers.Max(item => item.CreatedAt),
-                        offers);
-                });
-
         var useNewestOfferSort = requestedSkillId is null
             && request.MinimumDurationMinutes is null
             && request.MaxLearnerChargePoints is null
             && request.GetCredentialCountGroup() is null;
+        var companionById = eligibleCompanions
+            .Where(user => user.UserProfile != null)
+            .ToDictionary(user => user.UserId);
+        var teachSkillsByCompanionId = eligibleCompanions
+            .Where(user => user.UserProfile != null)
+            .ToDictionary(user => user.UserId, GetTeachSkills);
 
-        var rankedItems = eligibleCompanions
-            .Where(user =>
-                user.UserProfile?.IsPublic == true
-                && user.Roles.Contains("companion")
-                && sessionStats.ContainsKey(user.UserId)
-                && (!currentUserId.HasValue || user.UserId != currentUserId.Value))
-            .Select(user =>
+        var items = matchedOffers
+            .Where(item =>
+                companionById.TryGetValue(item.CompanionId, out var companion)
+                && companion.UserProfile!.IsPublic
+                && companion.Roles.Contains("companion")
+                && (!currentUserId.HasValue || companion.UserId != currentUserId.Value))
+            .Select(item =>
             {
-                var stats = sessionStats[user.UserId];
-                var review = reviewStats.TryGetValue(user.UserId, out var value)
+                var companion = companionById[item.CompanionId];
+                var review = reviewStats.TryGetValue(companion.UserId, out var value)
                     ? value
                     : (AvgRating: 0d, TotalReviews: 0);
-                var entitlements = companionEntitlements.TryGetValue(user.UserId, out var entitlementValue)
+                var entitlements = companionEntitlements.TryGetValue(companion.UserId, out var entitlementValue)
                     ? entitlementValue
                     : Common.Models.ResolvedSubscriptionEntitlements.Empty;
 
-                return new
-                {
-                    Stats = stats,
-                    Item = new CompanionSearchItemDto(
-                        user.UserId,
-                        user.UserProfile!.DisplayName,
-                        user.UserProfile.AvatarUrl,
-                        user.UserProfile.Bio,
-                        GetTeachSkills(user),
-                        stats.CredentialCount,
-                        review.AvgRating,
-                        review.TotalReviews,
-                        stats.MatchingSessionCount,
-                        stats.LowestPointCost,
-                        stats.PricingPreview,
-                        stats.NextScheduledAt,
-                        stats.Offers,
-                        entitlements.CompanionBadgeText,
-                        entitlements.HasPriorityVisibility)
-                };
-            })
-            .ToList();
+                return new CompanionSearchItemDto(
+                    companion.UserId,
+                    companion.UserProfile!.DisplayName,
+                    companion.UserProfile.AvatarUrl,
+                    companion.UserProfile.Bio,
+                    teachSkillsByCompanionId[companion.UserId],
+                    item.CredentialCount,
+                    review.AvgRating,
+                    review.TotalReviews,
+                    item.Offer,
+                    entitlements.CompanionBadgeText,
+                    entitlements.HasPriorityVisibility);
+            });
 
-        var items = useNewestOfferSort
-            ? rankedItems
-                .OrderByDescending(item => item.Stats.LatestOfferCreatedAt)
-                .ThenByDescending(item => item.Item.HasPriorityVisibility)
-                .ThenByDescending(item => item.Stats.NextScheduledAt)
-                .ThenBy(item => item.Item.LowestPointCost)
-                .ThenBy(item => item.Item.DisplayName, StringComparer.OrdinalIgnoreCase)
-                .Select(item => item.Item)
-                .ToList()
-            : rankedItems
-                .OrderByDescending(item => item.Item.HasPriorityVisibility)
-                .ThenBy(item => item.Item.NextScheduledAt)
-                .ThenBy(item => item.Item.LowestPointCost)
-                .ThenBy(item => item.Item.DisplayName, StringComparer.OrdinalIgnoreCase)
-                .Select(item => item.Item)
-                .ToList();
+        items = useNewestOfferSort
+            ? items
+                .OrderByDescending(item => item.Offer.CreatedAt)
+                .ThenByDescending(item => item.HasPriorityVisibility)
+                .ThenByDescending(item => item.Offer.ScheduledAt)
+                .ThenBy(item => item.Offer.PointCost)
+                .ThenBy(item => item.DisplayName, StringComparer.OrdinalIgnoreCase)
+            : items
+                .OrderByDescending(item => item.HasPriorityVisibility)
+                .ThenBy(item => item.Offer.ScheduledAt)
+                .ThenBy(item => item.Offer.PointCost)
+                .ThenBy(item => item.DisplayName, StringComparer.OrdinalIgnoreCase);
 
-        var total = items.Count;
-        var pagedItems = items
+        var sortedItems = items.ToList();
+
+        var total = sortedItems.Count;
+        var pagedItems = sortedItems
             .Skip((request.Page - 1) * request.Limit)
             .Take(request.Limit)
             .ToList();
@@ -297,12 +264,4 @@ public class SearchCompanionsQueryHandler : IRequestHandler<SearchCompanionsQuer
         return activeSkillLookup.TryGetValue(normalized, out var mappedByName) ? mappedByName : null;
     }
 
-    private sealed record CompanionSessionStats(
-        int CredentialCount,
-        int MatchingSessionCount,
-        int LowestPointCost,
-        SessionPricingPreviewDto PricingPreview,
-        DateTime NextScheduledAt,
-        DateTime LatestOfferCreatedAt,
-        IReadOnlyCollection<SessionDto> Offers);
 }

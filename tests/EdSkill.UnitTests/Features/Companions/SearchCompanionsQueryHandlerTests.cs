@@ -44,8 +44,7 @@ public class SearchCompanionsQueryHandlerTests
         result.Value!.Total.Should().Be(1);
         result.Value.Data.Should().ContainSingle();
         result.Value.Data.Single().CompanionId.Should().Be(returnedCompanionId);
-        result.Value.Data.Single().MatchedOffers.Should().ContainSingle();
-        result.Value.Data.Single().MatchedOffers.Single().DeliveryMode.Should().Be(SessionDeliveryMode.Online);
+        result.Value.Data.Single().Offer.DeliveryMode.Should().Be(SessionDeliveryMode.Online);
     }
 
     [Fact]
@@ -74,14 +73,12 @@ public class SearchCompanionsQueryHandlerTests
         result.IsSuccess.Should().BeTrue();
         result.Value!.Data.Should().ContainSingle();
 
-        var companion = result.Value.Data.Single();
-        companion.MatchingSessionCount.Should().Be(1);
-        companion.LowestPointCost.Should().Be(219);
-        companion.PricingPreview.MinLearnerChargePoints.Should().Be(219);
-        companion.PricingPreview.MaxLearnerChargePoints.Should().Be(269);
-        companion.MatchedOffers.Should().ContainSingle();
-        companion.MatchedOffers.Single().DurationOptions.Should().BeEquivalentTo(new[] { 60, 90 }, options => options.WithStrictOrdering());
-        companion.MatchedOffers.Single().DurationPricingOptions.Select(item => item.LearnerChargePoints)
+        var classItem = result.Value.Data.Single();
+        classItem.Offer.PointCost.Should().Be(219);
+        classItem.Offer.PricingPreview.MinLearnerChargePoints.Should().Be(219);
+        classItem.Offer.PricingPreview.MaxLearnerChargePoints.Should().Be(269);
+        classItem.Offer.DurationOptions.Should().BeEquivalentTo(new[] { 60, 90 }, options => options.WithStrictOrdering());
+        classItem.Offer.DurationPricingOptions.Select(item => item.LearnerChargePoints)
             .Should().BeEquivalentTo(new[] { 219, 269 }, options => options.WithStrictOrdering());
     }
 
@@ -145,6 +142,35 @@ public class SearchCompanionsQueryHandlerTests
         result.IsSuccess.Should().BeTrue();
         result.Value!.Data.Should().ContainSingle();
         result.Value.Data.Single().CredentialCount.Should().Be(expectedCredentialCount);
+    }
+
+    [Fact]
+    public async Task Handle_WhenCompanionHasMultipleMatchedOffers_ReturnsSeparateClassCards()
+    {
+        var skillId = Guid.NewGuid();
+        var companionId = Guid.NewGuid();
+        var skill = CreateSkill(skillId, "Speaking");
+        var users = new List<User>
+        {
+            CreateCompanion(companionId, skill, credentialCount: 1, displayName: "Companion One")
+        };
+
+        var sessions = new List<Session>
+        {
+            CreateFormulaSession(companionId, skillId, "Speaking", 60, DateTime.UtcNow.AddDays(1), description: "Class One"),
+            CreateFormulaSession(companionId, skillId, "Speaking", 90, DateTime.UtcNow.AddDays(2), description: "Class Two")
+        };
+
+        var handler = CreateHandler(users, sessions, new[] { skill });
+
+        var result = await handler.Handle(
+            new SearchCompanionsQuery(skillId, null, null, null, null, null, 1, 10),
+            CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.Total.Should().Be(2);
+        result.Value.Data.Select(item => item.Offer.Description)
+            .Should().BeEquivalentTo(new[] { "Class One", "Class Two" }, options => options.WithStrictOrdering());
     }
 
     [Fact]
@@ -276,8 +302,8 @@ public class SearchCompanionsQueryHandlerTests
 
         result.IsSuccess.Should().BeTrue();
         result.Value!.Total.Should().Be(2);
-        result.Value.Data.Select(item => item.CompanionId)
-            .Should().BeEquivalentTo(new[] { newerCompanionId, olderCompanionId }, options => options.WithStrictOrdering());
+        result.Value.Data.Select(item => item.Offer.Skill)
+            .Should().BeEquivalentTo(new[] { "Canva", "Speaking" }, options => options.WithStrictOrdering());
     }
 
     private static SearchCompanionsQueryHandler CreateHandler(
@@ -365,7 +391,8 @@ public class SearchCompanionsQueryHandlerTests
         int maxDurationMinutes,
         DateTime scheduledAt,
         SessionDeliveryMode deliveryMode = SessionDeliveryMode.Online,
-        DateTime? createdAt = null)
+        DateTime? createdAt = null,
+        string? description = null)
     {
         var createdAtValue = createdAt ?? scheduledAt.AddDays(-1);
 
@@ -375,6 +402,7 @@ public class SearchCompanionsQueryHandlerTests
             CompanionId = companionId,
             SkillId = skillId,
             Skill = skillName,
+            Description = description,
             DeliveryMode = deliveryMode,
             DurationMinutes = maxDurationMinutes,
             DurationOptions = new List<int> { maxDurationMinutes },

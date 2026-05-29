@@ -48,11 +48,7 @@ public record CompanionSearchItemDto(
     int CredentialCount,
     double AvgRating,
     int TotalReviews,
-    int MatchingSessionCount,
-    int LowestPointCost,
-    SessionPricingPreviewDto PricingPreview,
-    DateTime NextScheduledAt,
-    IReadOnlyCollection<SessionDto> MatchedOffers,
+    SessionDto Offer,
     string? SubscriptionBadge,
     bool HasPriorityVisibility
 );
