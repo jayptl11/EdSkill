@@ -8,9 +8,6 @@ public class SearchCompanionsQueryValidator : AbstractValidator<SearchCompanions
 
     public SearchCompanionsQueryValidator()
     {
-        RuleFor(item => item.SkillId)
-            .NotEmpty();
-
         RuleFor(item => item.MinimumDurationMinutes)
             .Must(value => value is null || AllowedDurations.Contains(value.Value))
             .WithMessage("Minimum duration filter is invalid.")

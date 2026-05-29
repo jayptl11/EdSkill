@@ -5,7 +5,7 @@ namespace EdSkill.Application.Features.Companions.DTOs;
 
 public sealed class SearchCompanionsRequest
 {
-    public Guid SkillId { get; init; }
+    public Guid? SkillId { get; init; }
     public int? MinimumDurationMinutes { get; init; }
     public int? MaxLearnerChargePoints { get; init; }
     public string? CredentialCountGroup { get; init; }

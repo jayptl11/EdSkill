@@ -233,6 +233,53 @@ public class SearchCompanionsQueryHandlerTests
         result.Value!.Total.Should().Be(0);
     }
 
+    [Fact]
+    public async Task Handle_WhenSkillFilterMissing_ReturnsAllSearchableProfilesOrderedByNewestOffer()
+    {
+        var now = new DateTime(2026, 5, 29, 10, 0, 0, DateTimeKind.Utc);
+        var firstSkillId = Guid.NewGuid();
+        var secondSkillId = Guid.NewGuid();
+        var olderCompanionId = Guid.NewGuid();
+        var newerCompanionId = Guid.NewGuid();
+
+        var firstSkill = CreateSkill(firstSkillId, "Speaking");
+        var secondSkill = CreateSkill(secondSkillId, "Canva");
+        var users = new List<User>
+        {
+            CreateCompanion(olderCompanionId, firstSkill, credentialCount: 1, displayName: "Older Companion"),
+            CreateCompanion(newerCompanionId, secondSkill, credentialCount: 2, displayName: "Newer Companion")
+        };
+
+        var sessions = new List<Session>
+        {
+            CreateFormulaSession(
+                olderCompanionId,
+                firstSkillId,
+                "Speaking",
+                60,
+                now.AddDays(2),
+                createdAt: now.AddDays(-3)),
+            CreateFormulaSession(
+                newerCompanionId,
+                secondSkillId,
+                "Canva",
+                90,
+                now.AddDays(1),
+                createdAt: now.AddHours(-2))
+        };
+
+        var handler = CreateHandler(users, sessions, new[] { firstSkill, secondSkill }, now: now);
+
+        var result = await handler.Handle(
+            new SearchCompanionsQuery(null, null, null, null, null, null, 1, 10),
+            CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.Total.Should().Be(2);
+        result.Value.Data.Select(item => item.CompanionId)
+            .Should().BeEquivalentTo(new[] { newerCompanionId, olderCompanionId }, options => options.WithStrictOrdering());
+    }
+
     private static SearchCompanionsQueryHandler CreateHandler(
         IReadOnlyCollection<User> users,
         IReadOnlyCollection<Session> sessions,
@@ -317,8 +364,11 @@ public class SearchCompanionsQueryHandlerTests
         string skillName,
         int maxDurationMinutes,
         DateTime scheduledAt,
-        SessionDeliveryMode deliveryMode = SessionDeliveryMode.Online)
+        SessionDeliveryMode deliveryMode = SessionDeliveryMode.Online,
+        DateTime? createdAt = null)
     {
+        var createdAtValue = createdAt ?? scheduledAt.AddDays(-1);
+
         return new Session
         {
             SessionId = Guid.NewGuid(),
@@ -330,7 +380,9 @@ public class SearchCompanionsQueryHandlerTests
             DurationOptions = new List<int> { maxDurationMinutes },
             PricingModel = SessionPricingModel.FormulaV1,
             ScheduledAt = scheduledAt,
-            Status = SessionStatus.Available
+            Status = SessionStatus.Available,
+            CreatedAt = createdAtValue,
+            UpdatedAt = createdAtValue
         };
     }
 }

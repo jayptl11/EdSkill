@@ -1,7 +1,9 @@
 using EdSkill.Application.Common.Interfaces;
 using EdSkill.Application.Common.Models;
 using EdSkill.Application.Features.Companions.DTOs;
+using EdSkill.Application.Features.Profile;
 using EdSkill.Application.Features.Sessions.DTOs;
+using EdSkill.Application.Features.Skills;
 using EdSkill.Domain.Entities;
 using EdSkill.Domain.Enums;
 using MediatR;
@@ -34,19 +36,29 @@ public class SearchCompanionsQueryHandler : IRequestHandler<SearchCompanionsQuer
     public async Task<Result<CompanionSearchResultDto>> Handle(SearchCompanionsQuery request, CancellationToken cancellationToken)
     {
         var currentUserId = _currentUserService.TryGetUserId();
+        var requestedSkillId = request.SkillId.HasValue && request.SkillId.Value != Guid.Empty
+            ? request.SkillId
+            : null;
+        var filters = new CompanionDiscoveryFilters(
+            request.MinimumDurationMinutes,
+            request.MaxLearnerChargePoints,
+            request.GetCredentialCountGroup());
 
-        var skill = await _context.Skills
-            .AsNoTracking()
-            .FirstOrDefaultAsync(item => item.SkillId == request.SkillId && item.IsActive && !item.IsDeleted, cancellationToken);
-        if (skill == null)
+        Skill? skill = null;
+        if (requestedSkillId.HasValue)
         {
-            return Result<CompanionSearchResultDto>.Failure("SKILL_NOT_FOUND", "Skill was not found.");
+            skill = await _context.Skills
+                .AsNoTracking()
+                .FirstOrDefaultAsync(item => item.SkillId == requestedSkillId.Value && item.IsActive && !item.IsDeleted, cancellationToken);
+            if (skill == null)
+            {
+                return Result<CompanionSearchResultDto>.Failure("SKILL_NOT_FOUND", "Skill was not found.");
+            }
         }
 
-        var candidateSessions = (await CompanionDiscoveryMatcher
-            .LoadAvailableOnlineSkillSessionsAsync(_context.Sessions.AsNoTracking(), skill, _dateTimeProvider.UtcNow, cancellationToken))
-            .OrderBy(session => session.ScheduledAt)
-            .ToList();
+        var candidateSessions = skill is null
+            ? await CompanionDiscoveryMatcher.LoadAvailableOnlineSessionsAsync(_context.Sessions.AsNoTracking(), _dateTimeProvider.UtcNow, cancellationToken)
+            : await CompanionDiscoveryMatcher.LoadAvailableOnlineSkillSessionsAsync(_context.Sessions.AsNoTracking(), skill, _dateTimeProvider.UtcNow, cancellationToken);
 
         if (candidateSessions.Count == 0)
         {
@@ -61,9 +73,11 @@ public class SearchCompanionsQueryHandler : IRequestHandler<SearchCompanionsQuer
             .ThenInclude(userSkill => userSkill.Skill)
             .Where(user => companionIds.Contains(user.UserId))
             .ToListAsync(cancellationToken);
-        var eligibleCompanions = companions
-            .Where(user => CompanionDiscoveryMatcher.HasOwnedTeachingSkill(user, skill.SkillId))
-            .ToList();
+        var eligibleCompanions = skill is null
+            ? companions
+            : companions
+                .Where(user => CompanionDiscoveryMatcher.HasOwnedTeachingSkill(user, skill.SkillId))
+                .ToList();
         var companionEntitlements = await _subscriptionEntitlementService.GetResolvedEntitlementsAsync(companionIds, cancellationToken);
 
         var companionLookup = eligibleCompanions
@@ -74,15 +88,9 @@ public class SearchCompanionsQueryHandler : IRequestHandler<SearchCompanionsQuer
         var platformMarkupPct = candidateSessions.Any(session => session.PricingModel == SessionPricingModel.FormulaV1)
             ? await _sessionPricingService.GetPlatformMarkupPctAsync(cancellationToken)
             : (int?)null;
-        var matchedOffers = CompanionDiscoveryMatcher.MatchOffers(
-            candidateSessions,
-            skill,
-            companionLookup,
-            platformMarkupPct,
-            new CompanionDiscoveryFilters(
-                request.MinimumDurationMinutes,
-                request.MaxLearnerChargePoints,
-                request.GetCredentialCountGroup()));
+        var matchedOffers = skill is null
+            ? await MatchOffersAcrossSkillsAsync(candidateSessions, eligibleCompanions, companionLookup, platformMarkupPct, filters, cancellationToken)
+            : CompanionDiscoveryMatcher.MatchOffers(candidateSessions, skill, companionLookup, platformMarkupPct, filters);
 
         var sessionStats = matchedOffers
             .GroupBy(session => session.CompanionId)
@@ -96,24 +104,28 @@ public class SearchCompanionsQueryHandler : IRequestHandler<SearchCompanionsQuer
                         .ThenBy(item => item.PointCost)
                         .ToList();
 
-                    return new
-                    {
-                        CredentialCount = group.First().CredentialCount,
-                        MatchingSessionCount = group.Count(),
-                        LowestPointCost = offers.Min(item => item.PointCost),
-                        PricingPreview = new SessionPricingPreviewDto(
+                    return new CompanionSessionStats(
+                        group.First().CredentialCount,
+                        group.Count(),
+                        offers.Min(item => item.PointCost),
+                        new SessionPricingPreviewDto(
                             offers.Min(item => item.PricingPreview.MinCompanionPayoutPoints),
                             offers.Max(item => item.PricingPreview.MaxCompanionPayoutPoints),
                             offers.Min(item => item.PricingPreview.MinLearnerChargePoints),
                             offers.Max(item => item.PricingPreview.MaxLearnerChargePoints),
                             offers.Min(item => item.PricingPreview.MinPlatformFeePoints),
                             offers.Max(item => item.PricingPreview.MaxPlatformFeePoints)),
-                        NextScheduledAt = offers.Min(item => item.ScheduledAt),
-                        Offers = offers
-                    };
+                        offers.Min(item => item.ScheduledAt),
+                        offers.Max(item => item.CreatedAt),
+                        offers);
                 });
 
-        var items = eligibleCompanions
+        var useNewestOfferSort = requestedSkillId is null
+            && request.MinimumDurationMinutes is null
+            && request.MaxLearnerChargePoints is null
+            && request.GetCredentialCountGroup() is null;
+
+        var rankedItems = eligibleCompanions
             .Where(user =>
                 user.UserProfile?.IsPublic == true
                 && user.Roles.Contains("companion")
@@ -129,28 +141,45 @@ public class SearchCompanionsQueryHandler : IRequestHandler<SearchCompanionsQuer
                     ? entitlementValue
                     : Common.Models.ResolvedSubscriptionEntitlements.Empty;
 
-                return new CompanionSearchItemDto(
-                    user.UserId,
-                    user.UserProfile!.DisplayName,
-                    user.UserProfile.AvatarUrl,
-                    user.UserProfile.Bio,
-                    GetTeachSkills(user),
-                    stats.CredentialCount,
-                    review.AvgRating,
-                    review.TotalReviews,
-                    stats.MatchingSessionCount,
-                    stats.LowestPointCost,
-                    stats.PricingPreview,
-                    stats.NextScheduledAt,
-                    stats.Offers,
-                    entitlements.CompanionBadgeText,
-                    entitlements.HasPriorityVisibility);
+                return new
+                {
+                    Stats = stats,
+                    Item = new CompanionSearchItemDto(
+                        user.UserId,
+                        user.UserProfile!.DisplayName,
+                        user.UserProfile.AvatarUrl,
+                        user.UserProfile.Bio,
+                        GetTeachSkills(user),
+                        stats.CredentialCount,
+                        review.AvgRating,
+                        review.TotalReviews,
+                        stats.MatchingSessionCount,
+                        stats.LowestPointCost,
+                        stats.PricingPreview,
+                        stats.NextScheduledAt,
+                        stats.Offers,
+                        entitlements.CompanionBadgeText,
+                        entitlements.HasPriorityVisibility)
+                };
             })
-            .OrderByDescending(item => item.HasPriorityVisibility)
-            .ThenBy(item => item.NextScheduledAt)
-            .ThenBy(item => item.LowestPointCost)
-            .ThenBy(item => item.DisplayName, StringComparer.OrdinalIgnoreCase)
             .ToList();
+
+        var items = useNewestOfferSort
+            ? rankedItems
+                .OrderByDescending(item => item.Stats.LatestOfferCreatedAt)
+                .ThenByDescending(item => item.Item.HasPriorityVisibility)
+                .ThenByDescending(item => item.Stats.NextScheduledAt)
+                .ThenBy(item => item.Item.LowestPointCost)
+                .ThenBy(item => item.Item.DisplayName, StringComparer.OrdinalIgnoreCase)
+                .Select(item => item.Item)
+                .ToList()
+            : rankedItems
+                .OrderByDescending(item => item.Item.HasPriorityVisibility)
+                .ThenBy(item => item.Item.NextScheduledAt)
+                .ThenBy(item => item.Item.LowestPointCost)
+                .ThenBy(item => item.Item.DisplayName, StringComparer.OrdinalIgnoreCase)
+                .Select(item => item.Item)
+                .ToList();
 
         var total = items.Count;
         var pagedItems = items
@@ -199,4 +228,81 @@ public class SearchCompanionsQueryHandler : IRequestHandler<SearchCompanionsQuer
             .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
             .ToList();
     }
+
+    private async Task<IReadOnlyCollection<MatchedCompanionOffer>> MatchOffersAcrossSkillsAsync(
+        IReadOnlyCollection<Session> sessions,
+        IReadOnlyCollection<User> companions,
+        IReadOnlyDictionary<Guid, UserProfile> companionProfiles,
+        int? platformMarkupPct,
+        CompanionDiscoveryFilters filters,
+        CancellationToken cancellationToken)
+    {
+        var activeSkills = await _context.Skills
+            .AsNoTracking()
+            .Where(item => item.IsActive && !item.IsDeleted)
+            .ToListAsync(cancellationToken);
+        var activeSkillById = activeSkills.ToDictionary(item => item.SkillId);
+        var activeSkillLookup = SkillNormalization.BuildLookup(activeSkills);
+        var companionLookup = companions.ToDictionary(item => item.UserId);
+        var matchedOffers = new List<MatchedCompanionOffer>();
+
+        foreach (var session in sessions)
+        {
+            if (!companionProfiles.TryGetValue(session.CompanionId, out var companionProfile)
+                || !companionLookup.TryGetValue(session.CompanionId, out var companion))
+            {
+                continue;
+            }
+
+            var skill = ResolveSkill(session, activeSkillById, activeSkillLookup);
+            if (skill is null || !CompanionDiscoveryMatcher.HasOwnedTeachingSkill(companion, skill.SkillId))
+            {
+                continue;
+            }
+
+            var credentialCount = CompanionCredentialRules.GetCredentialCount(companionProfile);
+            if (!CompanionCredentialCountGroupParser.Matches(filters.CredentialCountGroup, credentialCount))
+            {
+                continue;
+            }
+
+            var matchedOffer = CompanionDiscoveryMatcher.MatchOffer(session, skill, companionProfile, platformMarkupPct, filters);
+            if (matchedOffer is null)
+            {
+                continue;
+            }
+
+            matchedOffers.Add(new MatchedCompanionOffer(session.CompanionId, credentialCount, matchedOffer));
+        }
+
+        return matchedOffers;
+    }
+
+    private static Skill? ResolveSkill(
+        Session session,
+        IReadOnlyDictionary<Guid, Skill> activeSkillById,
+        IReadOnlyDictionary<string, Skill> activeSkillLookup)
+    {
+        if (session.SkillId.HasValue && activeSkillById.TryGetValue(session.SkillId.Value, out var mappedById))
+        {
+            return mappedById;
+        }
+
+        if (string.IsNullOrWhiteSpace(session.Skill))
+        {
+            return null;
+        }
+
+        var normalized = SkillNormalization.NormalizeLookup(session.Skill);
+        return activeSkillLookup.TryGetValue(normalized, out var mappedByName) ? mappedByName : null;
+    }
+
+    private sealed record CompanionSessionStats(
+        int CredentialCount,
+        int MatchingSessionCount,
+        int LowestPointCost,
+        SessionPricingPreviewDto PricingPreview,
+        DateTime NextScheduledAt,
+        DateTime LatestOfferCreatedAt,
+        IReadOnlyCollection<SessionDto> Offers);
 }

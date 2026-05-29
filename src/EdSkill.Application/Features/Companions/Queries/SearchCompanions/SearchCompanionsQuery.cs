@@ -5,7 +5,7 @@ using MediatR;
 namespace EdSkill.Application.Features.Companions.Queries.SearchCompanions;
 
 public record SearchCompanionsQuery(
-    Guid SkillId,
+    Guid? SkillId,
     int? MinimumDurationMinutes,
     int? MaxLearnerChargePoints,
     string? CredentialCountGroup,

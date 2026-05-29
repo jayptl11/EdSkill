@@ -8,6 +8,14 @@ public class SearchCompanionsQueryValidatorTests
     private readonly SearchCompanionsQueryValidator _validator = new();
 
     [Fact]
+    public void Validate_WhenSkillIdMissing_ShouldNotHaveError()
+    {
+        var result = _validator.TestValidate(new SearchCompanionsQuery(null, null, null, null, null, null));
+
+        result.ShouldNotHaveValidationErrorFor(x => x.SkillId);
+    }
+
+    [Fact]
     public void Validate_WhenDeliveryModeProvided_ShouldHaveError()
     {
         var result = _validator.TestValidate(new SearchCompanionsQuery(Guid.NewGuid(), null, null, null, "Offline", null));

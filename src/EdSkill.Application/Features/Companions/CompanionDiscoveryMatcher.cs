@@ -26,12 +26,7 @@ internal static class CompanionDiscoveryMatcher
         DateTime utcNow,
         CancellationToken cancellationToken)
     {
-        var sessions = await query
-            .Where(session =>
-                session.Status == SessionStatus.Available
-                && session.DeliveryMode == SessionDeliveryMode.Online
-                && session.ScheduledAt > utcNow)
-            .ToListAsync(cancellationToken);
+        var sessions = await LoadAvailableOnlineSessionsAsync(query, utcNow, cancellationToken);
 
         var validSkillKeys = BuildSkillKeys(skill);
         return sessions
@@ -39,6 +34,19 @@ internal static class CompanionDiscoveryMatcher
                 session.SkillId == skill.SkillId
                 || validSkillKeys.Contains(SkillNormalization.NormalizeLookup(session.Skill)))
             .ToList();
+    }
+
+    public static Task<List<Session>> LoadAvailableOnlineSessionsAsync(
+        IQueryable<Session> query,
+        DateTime utcNow,
+        CancellationToken cancellationToken)
+    {
+        return query
+            .Where(session =>
+                session.Status == SessionStatus.Available
+                && session.DeliveryMode == SessionDeliveryMode.Online
+                && session.ScheduledAt > utcNow)
+            .ToListAsync(cancellationToken);
     }
 
     public static IReadOnlyCollection<MatchedCompanionOffer> MatchOffers(
@@ -63,7 +71,7 @@ internal static class CompanionDiscoveryMatcher
                 continue;
             }
 
-            var matchedOffer = BuildMatchedOffer(session, skill, companionProfile, platformMarkupPct, filters);
+            var matchedOffer = MatchOffer(session, skill, companionProfile, platformMarkupPct, filters);
             if (matchedOffer is not null)
             {
                 matchedOffers.Add(new MatchedCompanionOffer(session.CompanionId, credentialCount, matchedOffer));
@@ -73,7 +81,7 @@ internal static class CompanionDiscoveryMatcher
         return matchedOffers;
     }
 
-    private static SessionDto? BuildMatchedOffer(
+    public static SessionDto? MatchOffer(
         Session session,
         Skill skill,
         UserProfile companionProfile,
