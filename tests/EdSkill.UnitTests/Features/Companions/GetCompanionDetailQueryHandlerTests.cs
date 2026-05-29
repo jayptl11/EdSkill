@@ -183,6 +183,30 @@ public class GetCompanionDetailQueryHandlerTests
         result.Value!.Sessions.Should().BeEmpty();
     }
 
+    [Fact]
+    public async Task Handle_WhenMultipleSkillOffersMatch_ReturnsNewestCreatedOfferFirst()
+    {
+        var now = new DateTime(2026, 5, 29, 10, 0, 0, DateTimeKind.Utc);
+        var skillId = Guid.NewGuid();
+        var companionId = Guid.NewGuid();
+        var skill = CreateSkill(skillId, "Speaking");
+        var users = new List<User>
+        {
+            CreateCompanion(companionId, skill, credentialCount: 1, displayName: "Companion One")
+        };
+
+        var olderCreatedOffer = CreateFormulaSession(companionId, skillId, "Speaking", 60, now.AddDays(1), createdAt: now.AddHours(-4));
+        var newerCreatedOffer = CreateFormulaSession(companionId, skillId, "Speaking", 60, now.AddDays(3), createdAt: now.AddHours(-1));
+        var handler = CreateHandler(users, new[] { olderCreatedOffer, newerCreatedOffer }, new[] { skill }, Array.Empty<Review>(), now);
+
+        var result = await handler.Handle(
+            new GetCompanionDetailQuery(companionId, skillId, null, null, null, null, null, 1, 10),
+            CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.Sessions.Select(session => session.SessionId).Should().Equal(newerCreatedOffer.SessionId, olderCreatedOffer.SessionId);
+    }
+
     private static GetCompanionDetailQueryHandler CreateHandler(
         IReadOnlyCollection<User> users,
         IReadOnlyCollection<Session> sessions,
@@ -258,8 +282,11 @@ public class GetCompanionDetailQueryHandlerTests
         string skillName,
         int maxDurationMinutes,
         DateTime scheduledAt,
-        SessionDeliveryMode deliveryMode = SessionDeliveryMode.Online)
+        SessionDeliveryMode deliveryMode = SessionDeliveryMode.Online,
+        DateTime? createdAt = null)
     {
+        var createdAtValue = createdAt ?? scheduledAt.AddDays(-1);
+
         return new Session
         {
             SessionId = Guid.NewGuid(),
@@ -271,7 +298,9 @@ public class GetCompanionDetailQueryHandlerTests
             DurationOptions = new List<int> { maxDurationMinutes },
             PricingModel = SessionPricingModel.FormulaV1,
             ScheduledAt = scheduledAt,
-            Status = SessionStatus.Available
+            Status = SessionStatus.Available,
+            CreatedAt = createdAtValue,
+            UpdatedAt = createdAtValue
         };
     }
 }

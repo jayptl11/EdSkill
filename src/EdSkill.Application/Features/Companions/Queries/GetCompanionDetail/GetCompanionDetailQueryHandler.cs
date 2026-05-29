@@ -61,7 +61,8 @@ public class GetCompanionDetailQueryHandler : IRequestHandler<GetCompanionDetail
                 skill,
                 _dateTimeProvider.UtcNow,
                 cancellationToken))
-            .OrderBy(session => session.ScheduledAt)
+            .OrderByDescending(session => session.CreatedAt)
+            .ThenByDescending(session => session.ScheduledAt)
             .ToList();
 
         var platformMarkupPct = candidateSessions.Any(session => session.PricingModel == Domain.Enums.SessionPricingModel.FormulaV1)
@@ -78,7 +79,8 @@ public class GetCompanionDetailQueryHandler : IRequestHandler<GetCompanionDetail
                     request.MaxLearnerChargePoints,
                     request.GetCredentialCountGroup()))
             .Select(item => item.Offer)
-            .OrderBy(item => item.ScheduledAt)
+            .OrderByDescending(item => item.CreatedAt)
+            .ThenByDescending(item => item.ScheduledAt)
             .ThenBy(item => item.PointCost)
             .ToList();
 

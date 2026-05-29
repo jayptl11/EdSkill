@@ -170,7 +170,7 @@ public class SearchCompanionsQueryHandlerTests
         result.IsSuccess.Should().BeTrue();
         result.Value!.Total.Should().Be(2);
         result.Value.Data.Select(item => item.Offer.Description)
-            .Should().BeEquivalentTo(new[] { "Class One", "Class Two" }, options => options.WithStrictOrdering());
+            .Should().BeEquivalentTo(new[] { "Class Two", "Class One" }, options => options.WithStrictOrdering());
     }
 
     [Fact]

@@ -177,6 +177,95 @@ public class GetCompanionSkillDetailQueryHandlerTests
     }
 
     [Fact]
+    public async Task Handle_WhenSkillHasMultipleOffers_ReturnsNewestCreatedOfferFirst()
+    {
+        var now = new DateTime(2026, 5, 17, 0, 0, 0, DateTimeKind.Utc);
+        var companionId = Guid.NewGuid();
+        var skillId = Guid.NewGuid();
+        var skill = new Skill
+        {
+            SkillId = skillId,
+            Name = "Speaking",
+            Slug = "speaking",
+            IconKey = "languages",
+            BasePointCost = 100,
+            IsActive = true
+        };
+
+        var companion = new User
+        {
+            UserId = companionId,
+            Username = "companion",
+            Roles = new List<string> { "companion" },
+            UserProfile = new UserProfile
+            {
+                ProfileId = Guid.NewGuid(),
+                UserId = companionId,
+                DisplayName = "Companion",
+                IsPublic = true
+            },
+            UserSkills = new List<UserSkill>
+            {
+                new()
+                {
+                    UserSkillId = Guid.NewGuid(),
+                    UserId = companionId,
+                    SkillId = skillId,
+                    Skill = skill,
+                    Type = UserSkillType.Teach
+                }
+            }
+        };
+
+        var olderCreatedOffer = new Session
+        {
+            SessionId = Guid.NewGuid(),
+            CompanionId = companionId,
+            SkillId = skillId,
+            Skill = skill.Name,
+            DeliveryMode = SessionDeliveryMode.Online,
+            DurationMinutes = 60,
+            PointCost = 100,
+            PricingModel = SessionPricingModel.LegacyManual,
+            ScheduledAt = now.AddDays(1),
+            Status = SessionStatus.Available,
+            CreatedAt = now.AddHours(-3)
+        };
+        var newerCreatedOffer = new Session
+        {
+            SessionId = Guid.NewGuid(),
+            CompanionId = companionId,
+            SkillId = skillId,
+            Skill = skill.Name,
+            DeliveryMode = SessionDeliveryMode.Online,
+            DurationMinutes = 60,
+            PointCost = 100,
+            PricingModel = SessionPricingModel.LegacyManual,
+            ScheduledAt = now.AddDays(3),
+            Status = SessionStatus.Available,
+            CreatedAt = now.AddHours(-1)
+        };
+
+        var contextMock = new Mock<IApplicationDbContext>();
+        contextMock.SetupGet(x => x.Users).Returns(new[] { companion }.BuildMockDbSet().Object);
+        contextMock.SetupGet(x => x.Sessions).Returns(new[] { olderCreatedOffer, newerCreatedOffer }.BuildMockDbSet().Object);
+        contextMock.SetupGet(x => x.Reviews).Returns(Array.Empty<Review>().BuildMockDbSet().Object);
+
+        var dateTimeProviderMock = new Mock<IDateTimeProvider>();
+        dateTimeProviderMock.SetupGet(x => x.UtcNow).Returns(now);
+
+        var handler = new GetCompanionSkillDetailQueryHandler(
+            contextMock.Object,
+            dateTimeProviderMock.Object,
+            Mock.Of<ISessionPricingService>());
+
+        var result = await handler.Handle(new GetCompanionSkillDetailQuery(companionId, skillId), CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.Offers.Data.Select(offer => offer.SessionId).Should().Equal(newerCreatedOffer.SessionId, olderCreatedOffer.SessionId);
+    }
+
+    [Fact]
     public async Task Handle_WhenProfileIsPrivate_ReturnsFailure()
     {
         var companionId = Guid.NewGuid();

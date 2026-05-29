@@ -122,7 +122,8 @@ internal static class CompanionProfileDataLoader
                     skill,
                     utcNow,
                     cancellationToken))
-            .OrderBy(session => session.ScheduledAt)
+            .OrderByDescending(session => session.CreatedAt)
+            .ThenByDescending(session => session.ScheduledAt)
             .ToList();
 
         var platformMarkupPct = candidateSessions.Any(session => session.PricingModel == SessionPricingModel.FormulaV1)
@@ -136,7 +137,8 @@ internal static class CompanionProfileDataLoader
                 platformMarkupPct,
                 new CompanionDiscoveryFilters(null, null, null))
             .Select(item => item.Offer)
-            .OrderBy(item => item.ScheduledAt)
+            .OrderByDescending(item => item.CreatedAt)
+            .ThenByDescending(item => item.ScheduledAt)
             .ThenBy(item => item.PointCost)
             .ToList();
     }
