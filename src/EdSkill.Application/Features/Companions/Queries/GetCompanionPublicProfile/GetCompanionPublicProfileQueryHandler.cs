@@ -9,15 +9,18 @@ namespace EdSkill.Application.Features.Companions.Queries.GetCompanionPublicProf
 public class GetCompanionPublicProfileQueryHandler : IRequestHandler<GetCompanionPublicProfileQuery, Result<CompanionPublicProfileDto>>
 {
     private readonly IApplicationDbContext _context;
+    private readonly IDateTimeProvider _dateTimeProvider;
     private readonly ISessionPricingService _sessionPricingService;
     private readonly ISubscriptionEntitlementService _subscriptionEntitlementService;
 
     public GetCompanionPublicProfileQueryHandler(
         IApplicationDbContext context,
+        IDateTimeProvider dateTimeProvider,
         ISessionPricingService sessionPricingService,
         ISubscriptionEntitlementService subscriptionEntitlementService)
     {
         _context = context;
+        _dateTimeProvider = dateTimeProvider;
         _sessionPricingService = sessionPricingService;
         _subscriptionEntitlementService = subscriptionEntitlementService;
     }
@@ -51,7 +54,13 @@ public class GetCompanionPublicProfileQueryHandler : IRequestHandler<GetCompanio
         foreach (var skill in teachSkills)
         {
             availableOffersBySkillId[skill.SkillId] =
-                await CompanionProfileDataLoader.LoadSkillOffersAsync(_context, _sessionPricingService, companion, skill, cancellationToken);
+                await CompanionProfileDataLoader.LoadSkillOffersAsync(
+                    _context,
+                    _sessionPricingService,
+                    companion,
+                    skill,
+                    _dateTimeProvider.UtcNow,
+                    cancellationToken);
         }
 
         var achievements = await CompanionProfileDataLoader.LoadAchievementsAsync(_context, request.CompanionId, cancellationToken);

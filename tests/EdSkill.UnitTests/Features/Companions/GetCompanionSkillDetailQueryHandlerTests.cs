@@ -13,6 +13,7 @@ public class GetCompanionSkillDetailQueryHandlerTests
     [Fact]
     public async Task Handle_WhenSkillIsTaught_ReturnsOnlyMatchingOffers()
     {
+        var now = new DateTime(2026, 5, 17, 0, 0, 0, DateTimeKind.Utc);
         var companionId = Guid.NewGuid();
         var taughtSkillId = Guid.NewGuid();
         var otherSkillId = Guid.NewGuid();
@@ -98,6 +99,19 @@ public class GetCompanionSkillDetailQueryHandlerTests
             {
                 SessionId = Guid.NewGuid(),
                 CompanionId = companionId,
+                SkillId = taughtSkillId,
+                Skill = taughtSkill.Name,
+                DeliveryMode = SessionDeliveryMode.Online,
+                DurationMinutes = 60,
+                PointCost = 80,
+                PricingModel = SessionPricingModel.LegacyManual,
+                ScheduledAt = now.AddDays(-2),
+                Status = SessionStatus.Available
+            },
+            new()
+            {
+                SessionId = Guid.NewGuid(),
+                CompanionId = companionId,
                 SkillId = otherSkillId,
                 Skill = otherSkill.Name,
                 DeliveryMode = SessionDeliveryMode.Online,
@@ -141,9 +155,14 @@ public class GetCompanionSkillDetailQueryHandlerTests
         contextMock.SetupGet(x => x.Sessions).Returns(sessions.BuildMockDbSet().Object);
         contextMock.SetupGet(x => x.Reviews).Returns(reviews.BuildMockDbSet().Object);
 
+        var dateTimeProviderMock = new Mock<IDateTimeProvider>();
+        dateTimeProviderMock.SetupGet(x => x.UtcNow).Returns(now);
         var sessionPricingServiceMock = new Mock<ISessionPricingService>();
 
-        var handler = new GetCompanionSkillDetailQueryHandler(contextMock.Object, sessionPricingServiceMock.Object);
+        var handler = new GetCompanionSkillDetailQueryHandler(
+            contextMock.Object,
+            dateTimeProviderMock.Object,
+            sessionPricingServiceMock.Object);
 
         var result = await handler.Handle(
             new GetCompanionSkillDetailQuery(companionId, taughtSkillId, 1, 10, 1, 20),
@@ -200,8 +219,13 @@ public class GetCompanionSkillDetailQueryHandlerTests
         contextMock.SetupGet(x => x.Users).Returns(users.BuildMockDbSet().Object);
         contextMock.SetupGet(x => x.Sessions).Returns(new List<Session>().BuildMockDbSet().Object);
         contextMock.SetupGet(x => x.Reviews).Returns(new List<Review>().BuildMockDbSet().Object);
+        var dateTimeProviderMock = new Mock<IDateTimeProvider>();
+        dateTimeProviderMock.SetupGet(x => x.UtcNow).Returns(new DateTime(2026, 5, 19, 0, 0, 0, DateTimeKind.Utc));
 
-        var handler = new GetCompanionSkillDetailQueryHandler(contextMock.Object, Mock.Of<ISessionPricingService>());
+        var handler = new GetCompanionSkillDetailQueryHandler(
+            contextMock.Object,
+            dateTimeProviderMock.Object,
+            Mock.Of<ISessionPricingService>());
 
         var result = await handler.Handle(new GetCompanionSkillDetailQuery(companionId, skillId), CancellationToken.None);
 

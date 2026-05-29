@@ -13,17 +13,20 @@ public class SearchCompanionsQueryHandler : IRequestHandler<SearchCompanionsQuer
 {
     private readonly IApplicationDbContext _context;
     private readonly ICurrentUserService _currentUserService;
+    private readonly IDateTimeProvider _dateTimeProvider;
     private readonly ISessionPricingService _sessionPricingService;
     private readonly ISubscriptionEntitlementService _subscriptionEntitlementService;
 
     public SearchCompanionsQueryHandler(
         IApplicationDbContext context,
         ICurrentUserService currentUserService,
+        IDateTimeProvider dateTimeProvider,
         ISessionPricingService sessionPricingService,
         ISubscriptionEntitlementService subscriptionEntitlementService)
     {
         _context = context;
         _currentUserService = currentUserService;
+        _dateTimeProvider = dateTimeProvider;
         _sessionPricingService = sessionPricingService;
         _subscriptionEntitlementService = subscriptionEntitlementService;
     }
@@ -41,7 +44,7 @@ public class SearchCompanionsQueryHandler : IRequestHandler<SearchCompanionsQuer
         }
 
         var candidateSessions = (await CompanionDiscoveryMatcher
-            .LoadAvailableOnlineSkillSessionsAsync(_context.Sessions.AsNoTracking(), skill, cancellationToken))
+            .LoadAvailableOnlineSkillSessionsAsync(_context.Sessions.AsNoTracking(), skill, _dateTimeProvider.UtcNow, cancellationToken))
             .OrderBy(session => session.ScheduledAt)
             .ToList();
 

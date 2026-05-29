@@ -155,24 +155,55 @@ public class GetCompanionDetailQueryHandlerTests
         result.ErrorCode.Should().Be("SKILL_NOT_FOUND");
     }
 
+    [Fact]
+    public async Task Handle_WhenAvailableOfferIsInThePast_DoesNotReturnPastOffer()
+    {
+        var now = new DateTime(2026, 5, 29, 10, 0, 0, DateTimeKind.Utc);
+        var skillId = Guid.NewGuid();
+        var companionId = Guid.NewGuid();
+
+        var skill = CreateSkill(skillId, "Speaking");
+        var users = new List<User>
+        {
+            CreateCompanion(companionId, skill, credentialCount: 1, displayName: "Companion One")
+        };
+
+        var sessions = new List<Session>
+        {
+            CreateFormulaSession(companionId, skillId, "Speaking", 60, now.AddDays(-2))
+        };
+
+        var handler = CreateHandler(users, sessions, new[] { skill }, Array.Empty<Review>(), now);
+
+        var result = await handler.Handle(
+            new GetCompanionDetailQuery(companionId, skillId, null, null, null, null, null, 1, 10),
+            CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.Sessions.Should().BeEmpty();
+    }
+
     private static GetCompanionDetailQueryHandler CreateHandler(
         IReadOnlyCollection<User> users,
         IReadOnlyCollection<Session> sessions,
         IReadOnlyCollection<Skill> skills,
-        IReadOnlyCollection<Review> reviews)
+        IReadOnlyCollection<Review> reviews,
+        DateTime? now = null)
     {
         var contextMock = new Mock<IApplicationDbContext>();
         contextMock.SetupGet(x => x.Skills).Returns(skills.BuildMockDbSet().Object);
         contextMock.SetupGet(x => x.Users).Returns(users.BuildMockDbSet().Object);
         contextMock.SetupGet(x => x.Sessions).Returns(sessions.BuildMockDbSet().Object);
         contextMock.SetupGet(x => x.Reviews).Returns(reviews.BuildMockDbSet().Object);
+        var dateTimeProviderMock = new Mock<IDateTimeProvider>();
+        dateTimeProviderMock.SetupGet(x => x.UtcNow).Returns(now ?? new DateTime(2026, 5, 29, 10, 0, 0, DateTimeKind.Utc));
 
         var sessionPricingServiceMock = new Mock<ISessionPricingService>();
         sessionPricingServiceMock
             .Setup(x => x.GetPlatformMarkupPctAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(25);
 
-        return new GetCompanionDetailQueryHandler(contextMock.Object, sessionPricingServiceMock.Object);
+        return new GetCompanionDetailQueryHandler(contextMock.Object, dateTimeProviderMock.Object, sessionPricingServiceMock.Object);
     }
 
     private static Skill CreateSkill(Guid skillId, string name)

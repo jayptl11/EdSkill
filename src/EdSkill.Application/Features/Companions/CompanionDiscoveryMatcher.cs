@@ -23,10 +23,14 @@ internal static class CompanionDiscoveryMatcher
     public static async Task<List<Session>> LoadAvailableOnlineSkillSessionsAsync(
         IQueryable<Session> query,
         Skill skill,
+        DateTime utcNow,
         CancellationToken cancellationToken)
     {
         var sessions = await query
-            .Where(session => session.Status == SessionStatus.Available && session.DeliveryMode == SessionDeliveryMode.Online)
+            .Where(session =>
+                session.Status == SessionStatus.Available
+                && session.DeliveryMode == SessionDeliveryMode.Online
+                && session.ScheduledAt > utcNow)
             .ToListAsync(cancellationToken);
 
         var validSkillKeys = BuildSkillKeys(skill);

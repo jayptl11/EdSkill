@@ -15,6 +15,7 @@ public class GetCompanionPublicProfileQueryHandlerTests
     [Fact]
     public async Task Handle_WhenCompanionHasTeachingSkills_ReturnsAllSkillsIncludingWithoutOffers()
     {
+        var now = new DateTime(2026, 5, 19, 0, 0, 0, DateTimeKind.Utc);
         var companionId = Guid.NewGuid();
         var skillWithOfferId = Guid.NewGuid();
         var skillWithoutOfferId = Guid.NewGuid();
@@ -160,6 +161,8 @@ public class GetCompanionPublicProfileQueryHandlerTests
         contextMock.SetupGet(x => x.Reviews).Returns(reviews.BuildMockDbSet().Object);
         contextMock.SetupGet(x => x.UserAchievements).Returns(userAchievements.BuildMockDbSet().Object);
 
+        var dateTimeProviderMock = new Mock<IDateTimeProvider>();
+        dateTimeProviderMock.SetupGet(x => x.UtcNow).Returns(now);
         var sessionPricingServiceMock = new Mock<ISessionPricingService>();
         sessionPricingServiceMock
             .Setup(x => x.GetPlatformMarkupPctAsync(It.IsAny<CancellationToken>()))
@@ -181,6 +184,7 @@ public class GetCompanionPublicProfileQueryHandlerTests
 
         var handler = new GetCompanionPublicProfileQueryHandler(
             contextMock.Object,
+            dateTimeProviderMock.Object,
             sessionPricingServiceMock.Object,
             subscriptionEntitlementServiceMock.Object);
 
@@ -197,8 +201,8 @@ public class GetCompanionPublicProfileQueryHandlerTests
         result.Value.TeachingSkills.Should().Contain(skill =>
             skill.SkillId == skillWithOfferId
             && skill.HasAvailableOffers
-            && skill.OfferCount == 2
+            && skill.OfferCount == 1
             && skill.StartingPointCost == 75
-            && skill.NextScheduledAt == new DateTime(2026, 5, 18, 8, 0, 0, DateTimeKind.Utc));
+            && skill.NextScheduledAt == new DateTime(2026, 5, 20, 8, 0, 0, DateTimeKind.Utc));
     }
 }

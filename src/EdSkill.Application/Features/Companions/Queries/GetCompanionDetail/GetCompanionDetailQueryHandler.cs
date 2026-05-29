@@ -11,11 +11,16 @@ namespace EdSkill.Application.Features.Companions.Queries.GetCompanionDetail;
 public class GetCompanionDetailQueryHandler : IRequestHandler<GetCompanionDetailQuery, Result<CompanionDetailDto>>
 {
     private readonly IApplicationDbContext _context;
+    private readonly IDateTimeProvider _dateTimeProvider;
     private readonly ISessionPricingService _sessionPricingService;
 
-    public GetCompanionDetailQueryHandler(IApplicationDbContext context, ISessionPricingService sessionPricingService)
+    public GetCompanionDetailQueryHandler(
+        IApplicationDbContext context,
+        IDateTimeProvider dateTimeProvider,
+        ISessionPricingService sessionPricingService)
     {
         _context = context;
+        _dateTimeProvider = dateTimeProvider;
         _sessionPricingService = sessionPricingService;
     }
 
@@ -54,6 +59,7 @@ public class GetCompanionDetailQueryHandler : IRequestHandler<GetCompanionDetail
             .LoadAvailableOnlineSkillSessionsAsync(
                 _context.Sessions.AsNoTracking().Where(session => session.CompanionId == request.CompanionId),
                 skill,
+                _dateTimeProvider.UtcNow,
                 cancellationToken))
             .OrderBy(session => session.ScheduledAt)
             .ToList();

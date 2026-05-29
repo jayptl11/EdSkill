@@ -10,11 +10,16 @@ namespace EdSkill.Application.Features.Companions.Queries.GetCompanionSkillDetai
 public class GetCompanionSkillDetailQueryHandler : IRequestHandler<GetCompanionSkillDetailQuery, Result<CompanionSkillDetailDto>>
 {
     private readonly IApplicationDbContext _context;
+    private readonly IDateTimeProvider _dateTimeProvider;
     private readonly ISessionPricingService _sessionPricingService;
 
-    public GetCompanionSkillDetailQueryHandler(IApplicationDbContext context, ISessionPricingService sessionPricingService)
+    public GetCompanionSkillDetailQueryHandler(
+        IApplicationDbContext context,
+        IDateTimeProvider dateTimeProvider,
+        ISessionPricingService sessionPricingService)
     {
         _context = context;
+        _dateTimeProvider = dateTimeProvider;
         _sessionPricingService = sessionPricingService;
     }
 
@@ -45,7 +50,13 @@ public class GetCompanionSkillDetailQueryHandler : IRequestHandler<GetCompanionS
             return Result<CompanionSkillDetailDto>.Failure("SKILL_NOT_FOUND", "Skill was not found.");
         }
 
-        var offers = await CompanionProfileDataLoader.LoadSkillOffersAsync(_context, _sessionPricingService, companion, skill, cancellationToken);
+        var offers = await CompanionProfileDataLoader.LoadSkillOffersAsync(
+            _context,
+            _sessionPricingService,
+            companion,
+            skill,
+            _dateTimeProvider.UtcNow,
+            cancellationToken);
         var totalOffers = offers.Count;
         var pagedOffers = offers
             .Skip((request.OfferPage - 1) * request.OfferLimit)

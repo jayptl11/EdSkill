@@ -113,12 +113,14 @@ internal static class CompanionProfileDataLoader
         ISessionPricingService sessionPricingService,
         User companion,
         Skill skill,
+        DateTime utcNow,
         CancellationToken cancellationToken)
     {
         var candidateSessions = (await CompanionDiscoveryMatcher
                 .LoadAvailableOnlineSkillSessionsAsync(
                     context.Sessions.AsNoTracking().Where(session => session.CompanionId == companion.UserId),
                     skill,
+                    utcNow,
                     cancellationToken))
             .OrderBy(session => session.ScheduledAt)
             .ToList();
